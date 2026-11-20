@@ -11,6 +11,10 @@ import * as path from 'node:path'
 import { Daytona, Sandbox } from '@daytona/sdk'
 import * as dotenv from 'dotenv'
 import { renderMarkdown } from './utils'
+import {
+  prepareRuntimeAssets,
+  provisionRuntimeAssets,
+} from './runtime-assets'
 
 dotenv.config()
 
@@ -722,6 +726,9 @@ async function downloadFailureLog(sandbox: Sandbox, outputDir: string): Promise<
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2))
   const job = await renderJob(options)
+  const runtimeAssets = options.authSmoke
+    ? undefined
+    : await prepareRuntimeAssets(PROJECT_ROOT, process.env.MEDIA_CAPTURE_KIT_DIR)
   const openRouterApiKey = options.authSmoke ? undefined : await loadOpenRouterApiKey()
 
   if (options.dryRun) {
@@ -733,6 +740,10 @@ async function main(): Promise<void> {
   const daytona = new Daytona({ apiKey: requireEnv('DAYTONA_API_KEY') })
   const snapshot = requireEnv('DAYTONA_SNAPSHOT')
   const envVars: Record<string, string> = {}
+  if (runtimeAssets) {
+    envVars.MEDIA_CAPTURE_KIT_DIR = runtimeAssets.kitDir
+    envVars.SWE_MULTIMODAL_SKILL_DIR = runtimeAssets.skillDir
+  }
   if (!options.dryRun) {
     envVars.CODEX_MODEL = requireEnv('CODEX_MODEL')
     envVars.CODEX_REASONING_EFFORT = requireEnv('CODEX_REASONING_EFFORT')
@@ -780,6 +791,10 @@ async function main(): Promise<void> {
   try {
     await waitForDocker(sandbox)
     if (!options.authSmoke) await uploadJobFiles(sandbox, job)
+    if (runtimeAssets) {
+      await provisionRuntimeAssets(sandbox, runtimeAssets)
+      console.log(`Media capture kit and multimodal skill uploaded and SHA-256 verified (${runtimeAssets.files.length} files).`)
+    }
     if (openRouterApiKey) await configureRvAuthentication(sandbox, openRouterApiKey)
     await configureRv(sandbox)
     if (!options.dryRun) {

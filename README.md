@@ -33,6 +33,66 @@ LOCAL_OUTPUT_DIR=./outputs
 Do not add `OPENAI_API_KEY`, `CODEX_API_KEY`, or a ChatGPT credential to the image,
 snapshot, repository, or `.env` file.
 
+## Optional media capture tools
+
+Keep micro1's proprietary `media-capture-kit` outside this repository. Set its
+absolute local path in the ignored `.env` file:
+
+```ini
+MEDIA_CAPTURE_KIT_DIR=/absolute/private/path/to/media-capture-kit
+```
+
+Before creating the sandbox, the controller validates that directory and prepares
+the required kit files, library, documentation/notices, and the repository's
+`swe-multimodal-task-author` skill. It uploads them at runtime, verifies SHA-256
+checksums, and registers the skill under the outer workspace's `.agents/skills/`.
+The worker receives these paths:
+
+```text
+MEDIA_CAPTURE_KIT_DIR=/opt/micro1/media-capture-kit
+SWE_MULTIMODAL_SKILL_DIR=/opt/swegen/skills/swe-multimodal-task-author
+```
+
+No kit source is committed or included in the base-worker Docker build context or
+snapshot. The kit may build private temporary capture images containing its library.
+Existing jobs are unaffected when the setting is absent. Auth-only smoke
+runs skip the kit. Configured dry runs include provisioning but do not capture media
+or invoke a model. Normal sandbox success/recovery cleanup also covers these files.
+
+The transfer does not install Harbor executor credentials or launch captures.
+Follow the skill's [capture guide](skills/swe-multimodal-task-author/references/capture-kit.md).
+Only selected media belongs in a submitted task; keep the proprietary kit, temporary
+capture tasks, unselected comparisons, and reproduction/audit files in private staging.
+The multimodal task workflow selects matching broken/working visual outputs for the
+solver and labels their roles; neither capture tooling nor reference source is shipped.
+
+The current CLI still builds CyberSWE advisory jobs. Runtime provisioning makes the
+tools available; the full Helix job mode and nested author-session controller remain
+separate integration work.
+
+## SWE Multimodal outer-agent workflow
+
+The operator launches an outer agent in a private Daytona worker. It receives the
+assigned Helix URL/brief and the
+[`swe-multimodal-task-author` skill](skills/swe-multimodal-task-author/SKILL.md), captures
+real broken/working media, supplies a short fair prompt, and guides an inner recorded
+`helix task author` session through construction and oracle success. One judgment
+lane and four separate probes run in parallel on frozen isolated copies. Repairs
+are reviewed for generality; only affected checks rerun, with at most five reruns per
+probe. Invalid findings go in task-root `disputes.md`. The outer finalizes concise
+`reasoning.md` through a recorded save, then returns the inspected Helix ZIP.
+
+The [initial prompt and prerequisites](skills/swe-multimodal-task-author/references/worker-launch.md)
+and [exact QC commands/retry loop](skills/swe-multimodal-task-author/references/qc-loop.md)
+are part of that skill and transfer with it. The
+[image build/push instructions](docker/README.md) now include Helix. Pairing and
+Codex/provider authentication happen at runtime, never in the image.
+
+The existing `--advisory` launcher below still runs CyberSWE. A Helix URL mode and
+interactive inner-session driver must be wired separately; transferring a skill and
+installing Helix do not implement those interfaces. Do not use the CyberSWE worker
+policy/template as a replacement for the multimodal initial prompt.
+
 ## Authentication smoke test
 
 Run this before the first real job:

@@ -4,6 +4,9 @@ node_modules/
 # Environment variables
 .env
 
+# Proprietary tools are provisioned at runtime from outside the repository.
+/media-capture-kit/
+
 # Build output
 dist/
 outputs/

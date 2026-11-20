@@ -1,86 +1,84 @@
 ---
 name: swe-multimodal-task-author
-description: "Coordinate authoring and polishing an assigned SWE Multimodal task from a Helix link: stage prompt/reasoning and real media, direct an inner helix task author session, validate the verifier, review rollouts, and upload. Use for the outer agent's Helix workflow; CyberSWE security-advisory generation uses a separate workflow."
+description: "Drive an assigned SWE Multimodal task from a Helix link in Daytona: capture real broken/working media, supply brief task text, guide a recorded inner author session, validate judges and four probes, and return a task ZIP. Use for the outer Helix agent; CyberSWE advisory generation has a separate workflow."
 ---
 
 # SWE Multimodal Task Author
 
-Act as the outer agent for one assigned task. Receive the task brief and Helix URL,
-keep that scope fixed, and continue from the actual lifecycle stage. A question about
-an existing report does not authorize a new build, model run, or upload.
+Act as the outer agent launched from the operator's machine into a private Daytona
+worker. The initial job supplies the task brief and Helix link. Keep that scope fixed.
+This skill is sent to the outer worker; give the inner session task-specific requests,
+not this orchestration policy. A report-analysis request alone does not launch new runs.
 
-## Roles and workspace
+## Execute in this order
 
-- The outer agent writes short, plain `instruction.md` and `reasoning.md` drafts,
-  coordinates real capture, inspects evidence, and uploads the finished task.
-- The inner agent runs through `helix task author`. It saves supplied text/media
-  and builds or repairs final task files. Keep outer staging outside the managed
-  task root; make final task-file changes through that recorded session.
-- Give the inner session the task, supplied text, media paths, scope, and validation
-  requirements. Its handoff need not identify the controller or discuss the agent
-  architecture. Preserve actual provenance in author evidence; make no invented
-  human-authorship claims and do not modify captured Helix guidance.
-- Use the active SWE Multimodal template and pipeline. This skill does not replace
-  applicable higher-priority instructions. Read the compatibility note in
-  [authoring.md](references/authoring.md) before the first writing handoff.
+Read [worker-launch.md](references/worker-launch.md) for the initial prompt, runtime
+prerequisites, and actual integration limits. Follow
+[orchestration.md](references/orchestration.md):
 
-## Route by stage
+1. **Understand the issue.** Download the supplied task, read the active template and
+   assigned issue/PR, and settle one observable contract.
+2. **Capture real evidence.** Use the external `media-capture-kit` in private staging.
+   For bug fixes, inspect matching broken and working recordings and give the solver
+   both with clear roles. Read [media.md](references/media.md) and
+   [capture-kit.md](references/capture-kit.md). Other categories need genuine source
+   material and a supported capture procedure.
+3. **Write the initial prompt.** Use the shared short request and `/media/...` links
+   in [authoring.md](references/authoring.md), adding only what fairness requires.
+   This is the fair lower-bound prompt, not permission to hide requirements. Draft
+   known reasoning facts externally. Choose the category branch below.
+4. **Start the inner session.** Launch `helix task author` in the downloaded folder.
+   Send the assigned PR/base, scope, exact text, media, and build/validation request.
+   Its handoff need not identify the controller; preserve truthful provenance.
+5. **Build and validate.** Guide the inner agent through a complete draft, starter/
+   reference verification, independent alternatives, and local oracle 1.0. Read
+   [verification.md](references/verification.md). Save/close and resume sessions when
+   Helix's writer lock requires it; wait for trace-save confirmation.
+6. **Run five QC lanes.** Follow [qc-loop.md](references/qc-loop.md): one judgment
+   lane and four separate probes in parallel on isolated copies of one frozen task.
+   Inspect findings before edits. Require a general repair, review it, and rerun only
+   affected checks. Each probe gets one initial run plus at most five reruns, including
+   errors; changing snapshots does not reset counters. Have the inner session save
+   defensible invalid-finding notes in task-root `disputes.md`.
+7. **Finish recorded work.** End the inner session and verify trace saving. Traces
+   need not be plain task-folder files.
+8. **Finalize reasoning.** Write brief, simple `reasoning.md` using the five headings
+   in [authoring.md](references/authoring.md). If already closed, open a brief recorded
+   session to save it, then close/save again. Rerun affected reasoning judges. The
+   required filename is `.md`, not `.txt`.
+9. **Return the task.** Use `helix task zip`, inspect it, and send the ZIP plus a brief
+   evidence summary back to the operator. Follow
+   [helix-workflow.md](references/helix-workflow.md). Direct upload is allowed when
+   included in the job; packaging/return is the default endpoint, not submission.
 
-Read only the relevant reference, then load the next one when the work reaches it.
+## Category and calibration
 
-1. **Intake and recorded session:** read [helix-workflow.md](references/helix-workflow.md).
-   Download the supplied task, inspect state, establish external staging, and verify
-   the controller can actually communicate with the inner session. Never claim that
-   nesting works merely because the process started.
-2. **Category and contract:** select one branch:
-   [bug fix](references/categories/bug-fix.md),
-   [feature](references/categories/feature.md),
-   [refactor](references/categories/refactor.md), or
-   [performance](references/categories/performance.md).
-   Classification precedence in the captured guidance is
-   `feature > performance > bug_fix > refactor`; use current template subcategories.
-3. **Text and media:** read [authoring.md](references/authoring.md) and
-   [media.md](references/media.md). Draft early, capture real output using the
-   preinstalled `media-capture-kit`, then reconcile the text with verified results.
-   If capture needs an environment/reference patch, have a preliminary inner session
-   prepare those first. Do not fabricate a missing design or unsupported reproduction.
-4. **Task build and validation:** read [verification.md](references/verification.md).
-   Direct the inner session to build the environment, production reference patch,
-   hidden tests, and config. Finish its trace before separate oracle/upload commands.
-   Require starter/reference evidence and fair positive/negative controls.
-5. **Probe or rollout findings:** read [review-and-calibration.md](references/review-and-calibration.md).
-   Inspect the actual patch and decisive result before changing anything. Preserve
-   justified coverage; do not append a test for every judge report or lower fairness
-   standards to hit a score.
-6. **Upload and completion:** return to the upload section of
-   [helix-workflow.md](references/helix-workflow.md). In a full authoring-and-upload
-   job, upload directly after validation and trace-save confirmation. Honor any narrower
-   user scope. Remote evaluation, spending, and final submission must be covered by
-   the job; reuse existing authorization without asking repeatedly.
+Select [bug fix](references/categories/bug-fix.md),
+[feature](references/categories/feature.md),
+[refactor](references/categories/refactor.md), or
+[performance](references/categories/performance.md).
+Captured classification precedence is `feature > performance > bug_fix > refactor`;
+use the current template's subcategories. Features/refactors need explicit public APIs.
 
-## Invariants
+Use [review-and-calibration.md](references/review-and-calibration.md) when rollouts
+are included. This job's screening target is at most two true passes out of four,
+then fair clarification toward one or two. Zero passes is promising difficulty evidence,
+not completed calibration. No wording guarantees a score; preserve media necessity.
+The live Helix ladder and authorized run budget govern actual evaluations.
 
-- Grade one coherent public behavior; every requirement must be discoverable from
-  prompt/media, existing interfaces, or authoritative tools available to the solver.
-- Keep gold patches, hidden tests, reasoning, upstream answers/history, capture
-  scripts, and author traces outside the solver-accessible image.
-- Preserve managed harness/parser/helpers and `environment/skills/`. Use the
-  template's separate verifier and keep protected test paths disjoint from gold paths.
-- Every F2P fails on starter and passes on gold; every P2P passes on both. Accept
-  independent correct implementations and reject realistic incomplete fixes.
-- Evaluate the real image and resource limits. Preserve Daytona build-concurrency
-  controls. Infrastructure failure or missing evidence cannot become a pass.
-- Treat the platform's current rollout plan as authoritative. Historical counts,
-  model names, local paths, and combobox fixtures are examples, not defaults.
+## Invariants and completion
 
-## Finish or return a precise blocker
+- The outer writes staged prompt/reasoning text; the recorded inner agent saves every
+  final task-file change. Read the compatibility note in
+  [authoring.md](references/authoring.md); do not alter captured Helix guidance.
+- Grade one discoverable behavior. Accept independent correct implementations and
+  reject realistic incomplete fixes. Preserve managed harnesses and runtime skills.
+- Keep gold, hidden tests, notes, traces, capture scripts, and answer-bearing history
+  out of the solver image. Ship only selected visual output as media.
+- No edits during a QC batch. Bind evidence to file hashes and review stale dependencies
+  after changes. Infrastructure failures never become passes.
 
-Report the task URL/version, upload state, validation/probe results, rollout verdicts
-if reviewed, evidence location, and remaining action. Preserve staged work before
-returning a blocker. Reuse saved evidence first; stop at the job's spending/retry
-limit or when another attempt requires missing input or cannot resolve the same
-external condition. Never report hosted execution, upload, approval, or submission
-that was not observed.
-
-For provenance and the distinction from the existing CyberSWE factory, consult
-[source-notes.md](references/source-notes.md) only when needed.
+Return the ZIP path/hash, task URL/version, validation results, dispute/retry status,
+and blockers. Stop at retry/budget limits and preserve an explicit incomplete handoff
+if needed. Never claim unobserved execution or approval. For provenance consult
+[source-notes.md](references/source-notes.md).

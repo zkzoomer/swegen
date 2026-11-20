@@ -49,6 +49,24 @@ an exact `scrollIntoView` call object or private sentinel can reject a valid alt
 Use observable visibility/state instead. `needs_review` or "could not decide" means
 unresolved evidence, not automatic failure or permission to invent a pass.
 
+## Fair lower-bound screen and calibration
+
+Start with the shared brief request and clearly labeled broken/working media in
+[authoring.md](authoring.md). Keep this initial version and its evidence. The user
+wants the shortest fair report as a difficulty screen, not misleading text or an
+implementation hint. Four valid authorized rollouts give this local screening rule:
+
+- 0/4 true passes: potentially promising difficulty, but final solvability is unproven.
+- 1–2/4 true passes: candidate target met if fairness, necessity, and verdicts hold.
+- 3–4/4 true passes: above this job's desired lower-bound difficulty screen; flag it.
+
+These are this job's screening preferences, not a replacement for the live pipeline.
+Do not count infrastructure failures, false fails, or false passes toward the band.
+After a promising low result, add only a natural clarification that addresses actual
+confusion, preserving media necessity, to aim for 1–2/4 within the authorized budget.
+No wording ensures that exact result. Stop rather than cycle indefinitely or obscure
+the prompt to lower scores. Probes/oracle do not supply the rollout pass rate.
+
 ## Calibrate by what agents actually missed
 
 - Missing/broken media access: fix paths and packaging.
@@ -71,6 +89,13 @@ versions separate; old successes do not certify changed tests, gold, environment
 prompt, or media.
 
 ## Review notes and disputes
+
+For this job, have the recorded inner session save defensible invalid-finding notes
+in task-root `disputes.md`, never inside source or media. Use the evidence-backed
+shape in [qc-loop.md](qc-loop.md). A dispute is a retained unresolved/review status,
+not a manufactured green check. Probe reruns are limited there; do not reset counters
+when a candidate, session, or snapshot changes.
+
 
 Retain run ID, verdict, approach, decisive failure/preservation result, and any action
 required for a false verdict. Keep short factual notes supported by separate evidence.

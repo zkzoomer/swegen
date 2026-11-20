@@ -19,7 +19,32 @@ session rejects supplied material under its active rules, preserve drafts and re
 the conflict; do not edit cached guidance or invent authorship. The user-approved
 workflow is documented here without claiming external policy changed.
 
-## Instruction
+## Instruction: shared fair lower-bound version
+
+Use this shared bug-fix pattern, based on the brief gold examples below. The text is
+simple across tasks; filenames and any necessary symptom phrase reflect actual media:
+
+```markdown
+Can you fix the issue shown here?
+
+Broken:
+![recording](/media/broken.mp4)
+
+Working reference:
+![recording](/media/working.mp4)
+```
+
+Use matching screenshots/documents when appropriate and reference every selected
+attachment. If needed for an unambiguous report, add one ordinary symptom phrase,
+such as "The labels overlap." Avoid diagnosing why. Labeling attachment roles is
+part of a fair request, not an optional hint to withhold.
+
+This is a common starting format, not identical bytes or a universal "fix this"
+contract for every category. Feature/refactor tasks still need their required public
+API and contract. Pick the shortest **fair** prompt, not the vaguest possible wording.
+Use the four-rollout screening/calibration rules in
+[orchestration.md](orchestration.md); no wording guarantees a pass count.
+
 
 Use plain words and short sentences. For bug fixes, aim for one to three sentences
 plus attachment references. Features/refactors may need more text to state their
@@ -76,7 +101,14 @@ Explain the starting cause or missing behavior and how the final reference handl
 Summarize F2P/P2P coverage, actual results, and alternative/negative-control evidence.
 ```
 
-Draft known facts early. Mark checks not yet run accurately. After implementation,
+The required filename is `reasoning.md`, not `reasoning.txt`. Draft known facts early
+for the first judge batch and mark unrun checks accurately. The outer agent finalizes
+it after technical/QC work and trace saving. If the main session has closed, reopen a
+short recorded session to save that exact final text and wait for its trace to save.
+Run the affected reasoning judgment afterward. A requested `.txt` copy is an optional
+external handoff companion; it never replaces the required Markdown file.
+
+After implementation,
 reconcile the reasoning with the final patch, scope, test IDs/counts, and evidence.
 Remove template directions and placeholders before upload. Do not invent an ablation,
 reference result, independence claim, or completed hosted check.

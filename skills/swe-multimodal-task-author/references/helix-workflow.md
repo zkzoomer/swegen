@@ -25,6 +25,13 @@ generated files later guarantees that Helix never captured them.
 
 ## Daytona prerequisites
 
+For runtime kit and skill provisioning, follow [capture-kit.md](capture-kit.md).
+The controller reads `MEDIA_CAPTURE_KIT_DIR` locally, uploads the tools outside the
+task tree, verifies hashes, and registers this skill under the outer workspace's
+`.agents/skills/`. It exposes remote kit/skill paths through environment variables.
+This transfer does not supply Helix pairing, a nested author controller, or the
+capture executor's credentials.
+
 Verify the actual environment has paired Helix, authenticated Codex, required network
 access, durable storage, uv, and working Docker access for local oracle/probes.
 Do not print credentials or place them in the task, skill, snapshots, or evidence.
@@ -50,8 +57,9 @@ scope/exclusions, text to save, media paths, technical build request, and valida
 criteria. The inner session makes final task-file changes. It should identify factual
 gaps in supplied text; the outer agent updates drafts and sends revisions to save.
 
-Finish a preliminary session if it must prepare capture prerequisites, then resume
-for media/text integration and repairs. Exit Codex and wait for Helix's saved-session
+Prepare capture prerequisites in an outer disposable scaffold first. If a preliminary
+recorded session is necessary, save it and record the ordering exception. Resume for
+media/text integration and repairs. Exit Codex and wait for Helix's saved-session
 confirmation before closing the terminal, interrupting again, or launching separate
 writers. Recover unfinished trace uploads from the task folder with:
 
@@ -81,9 +89,33 @@ The first run needs setup network access. On cancellation, wait for Docker clean
 Use installed help/upgrade if capabilities are missing; do not replace the recorded
 workflow with an independently launched Codex process and call it Helix provenance.
 
-## Upload and platform gates
+## Package and return (default endpoint)
 
-For a full authoring-and-upload job, the outer agent uploads directly:
+After QC and final recorded text saving, produce the supported task ZIP outside the
+managed root. Current Helix 0.1.3 supports:
+
+```bash
+helix task status
+helix task zip --destination /output/assigned-task.zip
+sha256sum /output/assigned-task.zip
+```
+
+Use the actual assigned task basename and a fresh destination. Inspect ZIP entries
+and required files. Keep private tools, credentials, raw traces, capture tasks, job
+outputs, and replay archives out. Keep `disputes.md` at the task root as author-only
+material when needed; no author notes go into solver source/media. The outer agent
+returns the ZIP plus a brief validation summary. The controller downloads and verifies
+the hash. Report unsaved provenance or exhausted/unresolved checks honestly and label
+an incomplete handoff. A ZIP alone does not prove traces were saved or checks passed.
+
+Final `reasoning.md` is written by the outer after its review and saved through a
+brief resumed author session if necessary. Its affected judge must be current. A
+requested `reasoning.txt` is a companion outside the task, not the required filename.
+
+## Optional upload and platform gates
+
+When the initial job also includes upload, the outer agent uploads directly without
+asking for repeat approval. The default job above ends with a returned ZIP:
 
 ```bash
 helix task status
@@ -101,8 +133,7 @@ and spending/retry limits. Do not repeat approvals already granted. If an interf
 for a website-only gate is unavailable, report that gate instead of inventing a CLI
 command or claiming completion. Listing/downloading results is read-only retrieval.
 
-`helix task zip` is a documented website-upload alternative when requested; it does
-not repair broken sync state. `helix task download` fetches updates in a linked folder.
+`helix task zip` also supports website upload, but does not repair broken sync state. `helix task download` fetches updates in a linked folder.
 Resolve conflicts before intentionally discarding either version.
 
 ## Results outside the task root

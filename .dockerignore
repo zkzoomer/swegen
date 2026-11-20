@@ -1,5 +1,6 @@
 .git
 .env
+media-capture-kit
 dist
 node_modules
 outputs

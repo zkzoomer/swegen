@@ -127,6 +127,12 @@ RUN chmod 0755 /usr/local/libexec/upload_task_to_drive.py \
     && ln -s /usr/local/libexec/upload_task_to_drive.py /usr/local/bin/upload-task-to-drive \
     && mkdir -p /home/daytona/input /home/daytona/workspace /output
 
+# Install public Helix without pairing or task credentials in the image.
+ARG HELIX_VERSION=0.1.3
+COPY docker/install_helix.sh /usr/local/libexec/install_helix.sh
+RUN bash /usr/local/libexec/install_helix.sh "${HELIX_VERSION}" \
+    && helix --version
+
 # This stage can be built without private registry access to smoke-test the
 # language toolchains, Docker presence, Codex CLI, and Drive uploader.
 FROM toolchain AS worker-base
@@ -138,7 +144,7 @@ FROM toolchain AS worker-base
 #     -f Dockerfile.cyberswe -t cyberswe-worker:dev .
 FROM worker-base AS worker
 
-ARG RV_VERSION=0.0.151
+ARG RV_VERSION=0.0.152
 ARG RV_INDEX_HOST=us-central1-python.pkg.dev
 ARG RV_INDEX_PATH=m1-rl-envs/rv-coding/simple
 

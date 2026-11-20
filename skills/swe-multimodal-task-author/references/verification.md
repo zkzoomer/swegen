@@ -87,26 +87,16 @@ harness replay is useful isolation but does not replace required local/hosted or
 Revalidate after executable changes; do not replay every expensive check after a pure
 documentation change without a material reason.
 
-## Probes and leakage
+## Judges, probes, and leakage
 
-Inspect installed syntax with `rv check --help` and `rv check --list-checks --no-color`.
-Versioned examples from the source environment were:
-
-```bash
-rv check --check 'swemultimodal/probe-gameability' --executor docker
-rv check --check 'swemultimodal/probe-altsolve' --executor docker
-rv check --check 'swemultimodal/probe-leakage' --executor docker
-rv check --check 'swemultimodal/probe-media-ablation' --executor docker
-```
-
-Verify current provider/model support, output paths, and job authorization before
-launching. A general `rv check` may invoke models; it is not necessarily cheap lint.
-Do not reuse historical OpenRouter environment overrides blindly; the inspected
-swemultimodal implementation pinned Codex execution irrespective of the old override.
+Follow [qc-loop.md](qc-loop.md) for exact commands, the five parallel lanes, isolated
+snapshots, general-repair review, targeted reruns, retry counters, and disputes. The
+PDF's four manual probes are gameability, alternative solution, leakage, and media
+ablation. The installed judge stage is `judgment`.
 
 Audit image copies, Git history, services, media, caches, test outputs, author notes,
-and duplicate fixed source for leakage. Keep only deliberate compact review evidence;
-do not accumulate raw probe jobs inside the managed task. Missing evidence, expired
-keys, permission-denied staging, and timeouts are not clean probe passes. Read the
-report's candidate patch and results before accepting its conclusion; route findings
-through [review-and-calibration.md](review-and-calibration.md).
+and duplicate fixed source for leakage. Keep compact review evidence in private staging;
+do not accumulate raw jobs inside the managed task. Missing evidence, expired keys,
+permission-denied staging, and timeouts are not clean passes. Read the candidate patch
+and decisive results before accepting the report's conclusion; use
+[review-and-calibration.md](review-and-calibration.md).
