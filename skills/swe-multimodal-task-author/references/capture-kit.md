@@ -29,8 +29,8 @@ and verifies files, but does not invoke capture models.
 
 Verify the environment variable and installed builder before capture. If absent,
 report the provisioning gap; do not fetch an unapproved replacement or reconstruct
-the proprietary implementation. Runtime upload does not convert the current
-CyberSWE advisory job into a Helix job or implement nested author-session control.
+the proprietary implementation. Runtime upload supplies tools only; it does not establish capture executor access
+or prove that interactive inner-session control works.
 
 ## Prepare a capture task
 

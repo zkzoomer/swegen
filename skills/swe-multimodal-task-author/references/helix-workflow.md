@@ -5,7 +5,7 @@ Use for download, session control, uploads, artifact transfers, and recovery.
 ## Intake
 
 The job supplies a task brief and an existing Helix URL. Download that task rather
-than creating a different one or initializing a CyberSWE Realm task:
+than creating a different one:
 
 ```bash
 helix status

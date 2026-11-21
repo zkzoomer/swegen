@@ -1,179 +1,115 @@
-# CyberSWE Daytona task generator
+# Swegen — SWE Multimodal task authoring
 
-This controller creates a disposable Daytona sandbox from the configured CyberSWE
-snapshot, asks the operator to authorize Codex with a one-time ChatGPT device login,
-and runs an autonomous task-building job. A successful job returns one verified handoff
-ZIP to the local `outputs/` directory.
+Launch an outer Codex agent in a private Daytona worker for an existing Helix task.
+It receives the assignment and the `swe-multimodal-task-author` skill, captures real
+broken/working media, and guides an inner recorded `helix task author` session.
+The controller downloads and hash-verifies its task handoff before deleting the worker.
 
-Codex uses the operator's signed-in ChatGPT plan. The controller does not send an
-OpenAI API key to Daytona and does not require separate API billing.
+## Setup
 
-## Prerequisites
-
-- Node.js 18 or newer
-- A Daytona API key and the name of the prepared CyberSWE snapshot
-- A ChatGPT account eligible to run the configured Codex model
-
-Install dependencies with:
-
-```bash
-npm install
-```
-
-Copy `.env.example` to `.env` and configure:
+Install Node.js and dependencies with `npm install`. Build and upload the worker image
+using [docker/README.md](docker/README.md), then configure the ignored `.env` using
+[.env.example](.env.example). Required values for task jobs:
 
 ```ini
-DAYTONA_API_KEY=
-DAYTONA_SNAPSHOT=cyberswe-worker-rv-0-0-151-v2
+DAYTONA_API_KEY=...
+DAYTONA_SNAPSHOT=swegen-multimodal-v1
+HELIX_EXPECTED_ACCOUNT=your-helix-account-email
+MEDIA_CAPTURE_KIT_DIR=/absolute/private/path/to/media-capture-kit
 CODEX_MODEL=gpt-5.6-sol
 CODEX_REASONING_EFFORT=high
-LOCAL_OUTPUT_DIR=./outputs
 ```
 
-Do not add `OPENAI_API_KEY`, `CODEX_API_KEY`, or a ChatGPT credential to the image,
-snapshot, repository, or `.env` file.
-
-## Optional media capture tools
-
-Keep micro1's proprietary `media-capture-kit` outside this repository. Set its
-absolute local path in the ignored `.env` file:
-
-```ini
-MEDIA_CAPTURE_KIT_DIR=/absolute/private/path/to/media-capture-kit
-```
-
-Before creating the sandbox, the controller validates that directory and prepares
-the required kit files, library, documentation/notices, and the repository's
-`swe-multimodal-task-author` skill. It uploads them at runtime, verifies SHA-256
-checksums, and registers the skill under the outer workspace's `.agents/skills/`.
-The worker receives these paths:
+The proprietary kit stays outside this repository and Docker context. The controller
+uploads selected tool files and the whole multimodal skill at runtime, verifies SHA-256,
+and registers the skill under the outer workspace's `.agents/skills/`. Remote paths:
 
 ```text
-MEDIA_CAPTURE_KIT_DIR=/opt/micro1/media-capture-kit
-SWE_MULTIMODAL_SKILL_DIR=/opt/swegen/skills/swe-multimodal-task-author
+/opt/micro1/media-capture-kit
+/opt/swegen/skills/swe-multimodal-task-author
 ```
 
-No kit source is committed or included in the base-worker Docker build context or
-snapshot. The kit may build private temporary capture images containing its library.
-Existing jobs are unaffected when the setting is absent. Auth-only smoke
-runs skip the kit. Configured dry runs include provisioning but do not capture media
-or invoke a model. Normal sandbox success/recovery cleanup also covers these files.
+The controller reads the existing rv OpenRouter key from `~/.rv/auth.json`, or the file
+selected by `RV_AUTH_PATH`, and checks it at runtime. It does not bake keys into images.
+Codex uses a one-time ChatGPT device login in the worker. Helix setup prints its pairing
+request and requires approval by `HELIX_EXPECTED_ACCOUNT`, without an email-confirmation
+prompt. Pairing the local machine does not pair a new worker.
 
-The transfer does not install Harbor executor credentials or launch captures.
-Follow the skill's [capture guide](skills/swe-multimodal-task-author/references/capture-kit.md).
-Only selected media belongs in a submitted task; keep the proprietary kit, temporary
-capture tasks, unselected comparisons, and reproduction/audit files in private staging.
-The multimodal task workflow selects matching broken/working visual outputs for the
-solver and labels their roles; neither capture tooling nor reference source is shipped.
+Harbor is bundled with rv at `/opt/uv-tools/realm-verifier/bin/harbor`. Capture executor
+authentication is separate: runtime kit transfer does not forward the controller's
+Daytona key. Configure the kit's supported executor access and budget for live capture.
+Never snapshot an authenticated worker or package credentials with task output.
 
-The current CLI still builds CyberSWE advisory jobs. Runtime provisioning makes the
-tools available; the full Helix job mode and nested author-session controller remain
-separate integration work.
+## Run an assigned task
 
-## SWE Multimodal outer-agent workflow
-
-The operator launches an outer agent in a private Daytona worker. It receives the
-assigned Helix URL/brief and the
-[`swe-multimodal-task-author` skill](skills/swe-multimodal-task-author/SKILL.md), captures
-real broken/working media, supplies a short fair prompt, and guides an inner recorded
-`helix task author` session through construction and oracle success. One judgment
-lane and four separate probes run in parallel on frozen isolated copies. Repairs
-are reviewed for generality; only affected checks rerun, with at most five reruns per
-probe. Invalid findings go in task-root `disputes.md`. The outer finalizes concise
-`reasoning.md` through a recorded save, then returns the inspected Helix ZIP.
-
-The [initial prompt and prerequisites](skills/swe-multimodal-task-author/references/worker-launch.md)
-and [exact QC commands/retry loop](skills/swe-multimodal-task-author/references/qc-loop.md)
-are part of that skill and transfer with it. The
-[image build/push instructions](docker/README.md) now include Helix. Pairing and
-Codex/provider authentication happen at runtime, never in the image.
-
-The existing `--advisory` launcher below still runs CyberSWE. A Helix URL mode and
-interactive inner-session driver must be wired separately; transferring a skill and
-installing Helix do not implement those interfaces. Do not use the CyberSWE worker
-policy/template as a replacement for the multimodal initial prompt.
-
-## Authentication smoke test
-
-Run this before the first real job:
+Create an external `assignment.md` with the assigned issue/scope, upstream repo/base/PR,
+expected behavior, exclusions, and concrete capture/QC/time/spend limits. State whether
+upload or hosted evaluation is included. Do not put credentials in the brief.
 
 ```bash
 npm run start -- \
-  --advisory https://github.com/cosmos/evm/security/advisories/GHSA-7g4w-cg88-2cq2 \
-  --auth-smoke
+  --task-url 'https://helix.micro1.ai/pipelines/PIPELINE_ID/tasks?task_id=TASK_ID' \
+  --brief-file /absolute/path/to/assignment.md
 ```
 
-The controller prints a URL and one-time device code. Open the URL in your browser,
-enter the code, and approve access. The sandbox then runs a one-turn Codex request,
-logs out, and is deleted. It does not build or download a task.
+The downloaded Helix template supplies the task ID and author metadata. The launcher
+does not invent or overwrite them. It uploads the current worker policy, job, agent,
+audit helper, skill, and private kit; authenticates rv/Codex; and pairs Helix before
+starting the outer agent. The outer uses its terminal tools to operate the recorded
+inner session. Actual unattended inner-session control still needs live validation;
+a missing terminal capability must produce an honest incomplete handoff.
 
-## Real task-building job
+The [skill](skills/swe-multimodal-task-author/SKILL.md) owns the task-building procedure.
+Its [QC runbook](skills/swe-multimodal-task-author/references/qc-loop.md) runs judgment
+plus four probes in parallel on frozen isolated copies. Only affected checks rerun,
+with one initial run plus at most five reruns per probe. Its
+[launch reference](skills/swe-multimodal-task-author/references/worker-launch.md) explains
+remaining runtime prerequisites and supported capture-category limits.
+
+## Output and audit
+
+One normal outer ZIP contains the unmodified `helix task zip` output and a concise
+`validation-summary.md`. The task itself has `instruction.md`, five-section
+`reasoning.md`, media, source, gold, verifier, and root `disputes.md` when needed.
+
+The controller runs [audit_handoff.py](scripts/audit_handoff.py) on every non-smoke ZIP.
+It accepts a bare Helix task ZIP or the two-file handoff, checks required files/config,
+media references/limits, reasoning sections, source history when present, archive safety,
+and generated/private residue. It does not run tests, inspect video frames, or certify
+QC/trace/hosted acceptance. Audit failures remain visible while the archive is still
+preserved and downloaded; they are not reported as passed.
+
+Blocked work uses a recovery ZIP with a work-in-progress task archive and
+`failure-summary.md`. Recovery audits report `incomplete`. Completed downloads go to
+`LOCAL_OUTPUT_DIR` (default `outputs/`). Existing files are not intentionally overwritten.
+
+## Smoke tests
+
+Authentication only (one configured-model call; no task build):
+
+```bash
+npm run start -- --auth-smoke
+```
+
+Provisioning/transfer dry run (no model calls or pairing, but creates a billed worker):
 
 ```bash
 npm run start -- \
-  --advisory https://github.com/OWNER/REPOSITORY/security/advisories/GHSA-xxxx-xxxx-xxxx \
-  --task-id 1234
+  --task-url 'https://helix.micro1.ai/pipelines/PIPELINE_ID/tasks?task_id=TASK_ID' \
+  --brief-file /absolute/path/to/assignment.md --dry-run
 ```
 
-Use `--focus "short approved scope"` when one advisory describes several independent
-issues. `--task-id` is optional and defaults to placeholder `1`; when the real Realm ID is
-known, provide it so the generated `task.toml` is immediately correct. The fixed task author is
-`Sergio Martinez <sema8047@expert.micro1.ai>` and is written into every `JOB.md` automatically.
-The worker names the task `<organization>-<repository>-<advisory-identifier>`, so normal
-`rv submit` produces the same canonical basename with a `.zip` extension.
-
-After device authorization, the controller streams the task-building worker's progress. On
-success it verifies the remote artifact, downloads it, verifies the local SHA-256, logs Codex
-out, and deletes the sandbox. The outer handoff contains the untouched `rv submit` task ZIP,
-`reasoning-notes.md`, and `draft-proposal.txt`. It includes `validation-summary.md` only when a
-misleading probe finding needs explanation. The worker runs `rv submit` normally and must not
-delete Realm's `qc_artifacts/` first. The controller downloads the handoff; it does not rebuild
-the task ZIP.
-
-## Non-authentication dry run
+Offline checks:
 
 ```bash
-npm run start -- \
-  --advisory https://github.com/cosmos/evm/security/advisories/GHSA-7g4w-cg88-2cq2 \
-  --dry-run
+npm test
 ```
 
-This tests snapshot creation, Docker, Realm Verifier configuration, ZIP validation,
-download, and cleanup without authenticating or invoking Codex.
+## Lifecycle
 
-## Credential lifecycle
-
-`codex login --device-auth` stores a renewable login only inside the newly created
-sandbox. The controller removes that login with `codex logout` before normal deletion.
-Failed and interrupted jobs destroy their sandbox instead of retaining an authenticated
-worker. If Daytona reports that deletion failed, delete the named sandbox manually from
-the Daytona dashboard.
-
-The credential is accessible to processes running as the sandbox user while the job is
-active. Do not reuse or snapshot an authenticated sandbox.
-
-## References
-
-- [Codex SDK](https://developers.openai.com/codex/sdk/)
-- [Sign in with ChatGPT for self-hosted VMs](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms)
-- [Daytona documentation](https://www.daytona.io/docs)
-
-## License
-
-See [LICENSE](LICENSE).
-
-
-```
-set -o pipefail
-
-npm run start -- \
-  --advisory <advisory> \
-  --task-id <task-id> \
-  2>&1 | tee "traces/task-1234-$(date -u +%Y%m%dT%H%M%SZ).txt"
-```
-
-
-npm run start -- \
-  --advisory https://github.com/cosmos/evm/security/advisories/GHSA-367m-g444-9mg3 \
-  --task-id 3157 \
-  2>&1 | tee "traces/task-3157-$(date -u +%Y%m%dT%H%M%SZ).txt"
+The configured TTL bounds worker lifetime. Successful verified downloads are followed
+by Codex logout, Helix disconnect, and worker deletion. Failed jobs have credentials
+removed where possible, are stopped, and retain their filesystem for the configured
+recovery interval before deletion. Review the reported worker ID if cleanup fails.
+No new worker, model run, snapshot push, task upload, or submission is implied by
+editing the controller or running offline tests.

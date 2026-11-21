@@ -30,13 +30,12 @@ lesson is to settle scope, preserve justified variants, accept legitimate altern
 and classify probes before edits. Those counts, fixtures, run IDs, model aliases,
 historical database repairs, and upstream fix are not defaults or repair recipes.
 
-Packaging this skill in `swegen/skills/` does not convert the existing CyberSWE
-controller into a Helix controller. Its advisory inputs, Realm commands, worker
-policy, and ZIP handoff belong to a separate workflow. Runtime kit/skill provisioning
-and the [capture integration guide](capture-kit.md) were added on 2026-11-20.
-The Helix terminal controller, non-bug capture support, capture-executor authentication,
-remote-gate interface, and actual Daytona capture/oracle execution still need
-implementation/verification. Local transfer tests do not establish live execution.
+The controller now runs only the Helix multimodal workflow: task-URL/assignment
+inputs, the installed outer skill, runtime pairing/authentication, and Helix ZIP
+handoffs. Runtime kit/skill provisioning and the [capture guide](capture-kit.md) were
+added on 2026-11-20. Interactive inner-session operation, capture executor access,
+non-bug evidence procedures, and hosted gates still need live validation. Offline
+controller/archive tests do not establish successful remote execution.
 
 The 2026-11-20 automation revision adds the outer launch prompt and ordered workflow,
 paired broken/working media policy, fair lower-bound screen, one judgment plus four

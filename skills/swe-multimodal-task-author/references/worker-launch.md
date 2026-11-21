@@ -3,8 +3,8 @@
 The operator's machine creates a private Daytona worker. Provision this entire skill
 and the proprietary capture kit through the existing runtime asset uploader, then
 launch the outer agent with the prompt below. Register the skill in that agent's
-workspace `.agents/skills/`; do not send the CyberSWE advisory `AGENTS.md` or advisory
-job template to a Helix task worker.
+workspace `.agents/skills/`. The controller's worker policy and job template are
+multimodal-only; the assignment brief is supplied with `--brief-file`.
 
 ## Initial outer-agent prompt
 
@@ -40,7 +40,7 @@ probe details, and orchestration instructions are author-only.
 
 ## Image and runtime readiness
 
-`Dockerfile.cyberswe` is currently the shared image filename. Its public toolchain stage
+`Dockerfile.swegen` builds the worker image. Its public toolchain stage
 installs pinned Helix 0.1.3, Codex, uv, and Docker; its final stage adds pinned private
 `rv`. The image contains no Helix pairing or Codex login. Build/push instructions are in
 `docker/README.md` in the controller repository. Do not snapshot an authenticated worker.
@@ -65,20 +65,22 @@ A full run can exceed the controller's existing four-hour TTL. Choose a job life
 and capture/QC budgets explicitly; do not silently truncate or count timeouts as passes.
 Pairing and Codex runtime credentials need cleanup when a disposable worker is retired.
 
-## What is implemented versus still to wire
+## Controller integration and live validation
 
-Implemented: runtime upload/hash verification of kit and this skill, skill discovery,
-Docker/uv/Codex tools, controller artifact download/hash verification, and the image's
-Helix installation. Local tests are not proof of a live capture or nested session.
+The launcher accepts `--task-url` and `--brief-file`, renders the multimodal job,
+uploads this skill and external capture kit, configures rv, starts Codex device login,
+and pairs Helix with `--expected-account` before starting the outer worker. The expected
+account is required for a real task job so setup needs no email-confirmation prompt.
+The controller audits bare Helix ZIPs and two-file handoffs, downloads them with hash
+verification, and reports recovery output as incomplete. These paths have offline tests.
 
-Still separate integration work: the current `src/index.ts` CLI accepts CyberSWE
-advisory jobs and sends their policy/prompt. It does not yet offer this Helix URL job
-mode, select this prompt instead, pair Helix, or drive an interactive inner session.
-`helix task author --output json` is not documented as a headless conversation API.
-A terminal driver must demonstrate start, send, read, clean exit, and trace-save
-confirmation before unattended jobs are claimed to work. Do not launch a CyberSWE
-advisory command and claim it executed this workflow.
+The worker uses its terminal tools to control the inner interactive session. Demonstrate
+start/send/read/clean exit and trace-save confirmation in a live worker before claiming
+unattended execution works. `helix task author --output json` is not documented as a
+headless conversation API. A missing terminal capability must return a precise blocker,
+not a direct-edit substitute for recorded authoring.
 
-Hosted rollouts and final platform gates also need a supported interaction path;
-results listing/downloading does not start an evaluation. This guide does not invent
-those interfaces. Report the precise missing capability with preserved staging.
+Hosted rollouts/final gates need a supported interaction path; listing/downloading
+results does not start evaluation. Capture executor credentials and non-bug evidence
+procedures remain separate prerequisites. Local tests do not prove a live capture,
+paired task access, paid probe, or recorded nested session.

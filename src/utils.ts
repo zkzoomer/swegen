@@ -15,3 +15,8 @@ export function renderMarkdown(text: string): string {
     .replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, `${ITALIC}$1${RESET}`) // *italic*
     .replace(/`([^`]+?)`/g, `${DIM}$1${RESET}`) // `code`
 }
+
+/** Quote one literal argument for the worker's POSIX shell. */
+export function quoteShell(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'"
+}

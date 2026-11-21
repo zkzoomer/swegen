@@ -115,10 +115,10 @@ RUN uv venv --python python3 /opt/drive-uploader \
         "google-api-python-client==${GOOGLE_API_PYTHON_CLIENT_VERSION}" \
         "google-auth==${GOOGLE_AUTH_VERSION}"
 
-WORKDIR /opt/cyberswe-agent
+WORKDIR /opt/swegen-agent
 COPY agent/package.json agent/package-lock.json ./
 RUN npm ci --omit=dev \
-    && ln -s /opt/cyberswe-agent/node_modules/.bin/codex /usr/local/bin/codex \
+    && ln -s /opt/swegen-agent/node_modules/.bin/codex /usr/local/bin/codex \
     && codex --version
 COPY agent/index.ts ./index.ts
 
@@ -141,7 +141,7 @@ FROM toolchain AS worker-base
 # with a short-lived token, for example:
 #   gcloud auth print-access-token > /tmp/rv-token
 #   docker build --secret id=artifact_registry_token,src=/tmp/rv-token \
-#     -f Dockerfile.cyberswe -t cyberswe-worker:dev .
+#     -f Dockerfile.swegen -t swegen-worker:dev .
 FROM worker-base AS worker
 
 ARG RV_VERSION=0.0.152
@@ -152,7 +152,9 @@ RUN --mount=type=secret,id=artifact_registry_token,required=true \
     token="$(cat /run/secrets/artifact_registry_token)" \
     && private_index="https://oauth2accesstoken:${token}@${RV_INDEX_HOST}/${RV_INDEX_PATH}/" \
     && uv tool install --python 3.14 --index "${private_index}" "realm-verifier==${RV_VERSION}" \
-    && rv --version
+    && rv --version \
+    && ln -s /opt/uv-tools/realm-verifier/bin/harbor /usr/local/bin/harbor \
+    && harbor --help >/dev/null
 
 WORKDIR /home/daytona/workspace
 

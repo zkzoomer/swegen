@@ -1,6 +1,6 @@
 # Swegen Daytona worker image
 
-`Dockerfile.cyberswe` is the current shared image filename. It builds:
+`Dockerfile.swegen` builds the multimodal worker image. It builds:
 
 - `worker-base`: public toolchains, Docker, uv, Codex, **Helix 0.1.3**, and upload utilities;
 - `worker`: the complete image, adding pinned private `rv` (currently 0.0.152).
@@ -9,6 +9,8 @@ Helix is installed from its versioned public release with checksum/version check
 Change `HELIX_VERSION` deliberately when upgrading. Neither target contains Helix
 pairing, Codex login, provider credentials, or micro1's proprietary capture kit.
 The controller sends the kit and multimodal skill to a private running worker.
+Rebuild this image for the multimodal migration: the agent runtime path is now
+`/opt/swegen-agent`, so an older snapshot with the previous path is insufficient.
 
 ## Build locally
 
@@ -26,8 +28,8 @@ gcloud auth print-access-token > "$rv_token_file"
 docker build --platform linux/amd64 \
   --build-arg HELIX_VERSION=0.1.3 \
   --secret id=artifact_registry_token,src="$rv_token_file" \
-  -f Dockerfile.cyberswe \
-  -t swegen-worker:helix-0.1.3-rv-0.0.152 .
+  -f Dockerfile.swegen \
+  -t swegen-worker:multimodal-v1 .
 ```
 
 For public tools only, omit the secret and use `--target worker-base` with a distinct
@@ -37,7 +39,7 @@ A public-base build is not evidence that the private package installation works.
 Smoke-check the built image without starting its Docker daemon or authenticating:
 
 ```bash
-docker run --rm --entrypoint bash swegen-worker:helix-0.1.3-rv-0.0.152 -lc \
+docker run --rm --entrypoint bash swegen-worker:multimodal-v1 -lc \
   'helix --version && helix task author --help && helix task zip --help && codex --version && rv --version'
 ```
 
@@ -47,8 +49,8 @@ Authenticate the local Daytona CLI with the operator's existing account. The ins
 CLI supports local-image upload; a public Docker Hub push is unnecessary:
 
 ```bash
-daytona snapshot push swegen-worker:helix-0.1.3-rv-0.0.152 \
-  --name swegen-helix-0-1-3-rv-0-0-152 \
+daytona snapshot push swegen-worker:multimodal-v1 \
+  --name swegen-multimodal-v1 \
   --cpu 8 --memory 32 --disk 100
 
 daytona snapshot list
@@ -67,11 +69,12 @@ daytona snapshot push --help
 Set the exact ready snapshot name in the controller's ignored `.env`:
 
 ```ini
-DAYTONA_SNAPSHOT=swegen-helix-0-1-3-rv-0-0-152
+DAYTONA_SNAPSHOT=swegen-multimodal-v1
 ```
 
-This uploads the image; it does not pair Helix or make the current advisory controller
-a Helix job launcher. The outer-agent launch contract and outstanding wiring are in
+This uploads the image. The multimodal launcher pairs Helix separately in each
+disposable worker, with the expected account set in the job configuration. The
+outer-agent launch contract and remaining live-validation requirements are in
 [worker-launch.md](../skills/swe-multimodal-task-author/references/worker-launch.md).
 A local secret-backed build followed by `snapshot push` is the documented path here;
 do not replace it with a remote Dockerfile build that lacks the private build secret.

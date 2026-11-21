@@ -105,9 +105,8 @@ async function main(): Promise<void> {
   const thread: Thread = codex.startThread(options)
 
   // Run the Codex agent and stream the output
-  const { events } = await thread.runStreamed(prompt, {
-    cyberAccessProgram: 'daybreak_blue',
-  })
+  const { events } = await thread.runStreamed(prompt)
+  let failed = false
   for await (const event of events) {
     if (event.type === 'item.completed') {
       // Print each completed item
@@ -118,13 +117,16 @@ async function main(): Promise<void> {
       const { cached_input_tokens, input_tokens, output_tokens } = event.usage as Usage
       console.log(`*Usage Summary: Cached: ${cached_input_tokens}, Input: ${input_tokens}, Output: ${output_tokens}*`)
     } else if (event.type === 'turn.failed') {
+      failed = true
       console.error(`Codex turn failed: ${event.error.message}`)
       await persistFailureEvent(event)
     } else if (event.type === 'error') {
+      failed = true
       console.error(`Codex stream error: ${event.message}`)
       await persistFailureEvent(event)
     }
   }
+  if (failed) throw new Error('Codex worker reported a failed turn; inspect retained evidence.')
 }
 
 main().catch((err) => {

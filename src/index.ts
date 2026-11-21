@@ -10,7 +10,9 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { Daytona, Sandbox } from '@daytona/sdk'
 import * as dotenv from 'dotenv'
-import { renderMarkdown } from './utils'
+import { renderMarkdown, quoteShell } from './utils'
+import { parseArgs, renderJobText, usage, type CliOptions } from './job'
+import { validateArchiveEntries } from './artifacts'
 import {
   prepareRuntimeAssets,
   provisionRuntimeAssets,
@@ -22,7 +24,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..')
 const REMOTE_WORKSPACE = '/home/daytona/workspace'
 const REMOTE_OUTPUT = '/output'
 const REMOTE_FAILURE_LOG = `${REMOTE_WORKSPACE}/codex-worker-failures.jsonl`
-const REMOTE_ARCHIVE_AUDITOR = '/opt/cyberswe-agent/audit_handoff.py'
+const REMOTE_ARCHIVE_AUDITOR = '/opt/swegen-agent/audit_handoff.py'
 const SANDBOX_MAX_LIFETIME_MINUTES = readPositiveIntegerEnv(
   'DAYTONA_SANDBOX_MAX_LIFETIME_MINUTES',
   240,
@@ -32,125 +34,12 @@ const SANDBOX_RECOVERY_RETENTION_MINUTES = readPositiveIntegerEnv(
   120,
 )
 
-type CliOptions = {
-  advisory: string
-  focus?: string
-  taskId: string
-  dryRun: boolean
-  authSmoke: boolean
-  outputDir: string
-}
-
 type RemoteArtifact = {
   name: string
   path: string
   size: number
   sha256: string
-}
-
-function usage(): string {
-  return [
-    'Usage:',
-    '  npm run start -- --advisory <https-url> --task-id <positive-integer> [--focus <scope>] [--output-dir <path>]',
-    '  npm run start -- --advisory <https-url> --task-id <positive-integer> [--focus <scope>] --dry-run',
-    '  npm run start -- --advisory <https-url> --auth-smoke',
-    '',
-    '--task-id is required for every task-building or dry-run invocation and is',
-    'written to metadata.task_id. The controller fails before creating a sandbox',
-    'when it is omitted. --auth-smoke is the only mode that does not require it.',
-    '',
-    '--dry-run renders JOB.md, displays it, creates a sandbox from the configured',
-    'snapshot, writes a known smoke ZIP under /output, downloads and verifies it,',
-    'then deletes the sandbox. It does not authenticate or invoke Codex.',
-    '',
-    '--auth-smoke creates a sandbox, asks you to authorize its one-time ChatGPT',
-    'device login in your browser, runs a one-turn gpt-5.6-sol check, logs out,',
-    'and deletes the sandbox. It does not build a CyberSWE task.',
-  ].join('\n')
-}
-
-function readOptionValue(args: string[], index: number, option: string): string {
-  const value = args[index + 1]
-  if (!value || value.startsWith('--')) throw new Error(`${option} requires a value`)
-  return value
-}
-
-function parseArgs(args: string[]): CliOptions {
-  let advisory = ''
-  let focus: string | undefined
-  let taskId = ''
-  let dryRun = false
-  let authSmoke = false
-  let outputDir = process.env.LOCAL_OUTPUT_DIR || './outputs'
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index]
-    if (arg === '--help' || arg === '-h') {
-      console.log(usage())
-      process.exit(0)
-    } else if (arg === '--advisory') {
-      advisory = readOptionValue(args, index, arg)
-      index += 1
-    } else if (arg.startsWith('--advisory=')) {
-      advisory = arg.slice('--advisory='.length)
-    } else if (arg === '--focus') {
-      focus = readOptionValue(args, index, arg)
-      index += 1
-    } else if (arg.startsWith('--focus=')) {
-      focus = arg.slice('--focus='.length)
-    } else if (arg === '--task-id') {
-      taskId = readOptionValue(args, index, arg)
-      index += 1
-    } else if (arg.startsWith('--task-id=')) {
-      taskId = arg.slice('--task-id='.length)
-    } else if (arg === '--output-dir') {
-      outputDir = readOptionValue(args, index, arg)
-      index += 1
-    } else if (arg.startsWith('--output-dir=')) {
-      outputDir = arg.slice('--output-dir='.length)
-    } else if (arg === '--dry-run') {
-      dryRun = true
-    } else if (arg === '--auth-smoke') {
-      authSmoke = true
-    } else {
-      throw new Error(`unknown argument: ${arg}`)
-    }
-  }
-
-  if (dryRun && authSmoke) throw new Error('--dry-run and --auth-smoke are mutually exclusive')
-
-  if (!advisory.trim()) throw new Error('--advisory is required')
-  let parsed: URL
-  try {
-    parsed = new URL(advisory)
-  } catch {
-    throw new Error(`invalid advisory URL: ${advisory}`)
-  }
-  if (parsed.protocol !== 'https:' || !parsed.hostname) {
-    throw new Error('the advisory must be an absolute HTTPS URL')
-  }
-  if (focus !== undefined && !focus.trim()) throw new Error('--focus cannot be empty')
-  if (!authSmoke && !taskId) {
-    throw new Error('--task-id is required for task-building and dry-run invocations')
-  }
-  if (authSmoke && !taskId) taskId = '1'
-  if (!/^[1-9][0-9]*$/.test(taskId)) {
-    throw new Error('--task-id must be a positive integer')
-  }
-  const numericTaskId = Number(taskId)
-  if (!Number.isSafeInteger(numericTaskId)) {
-    throw new Error('--task-id is too large')
-  }
-  if (!outputDir.trim()) throw new Error('--output-dir cannot be empty')
-
-  return {
-    advisory: parsed.toString(),
-    focus: focus?.trim(),
-    taskId,
-    dryRun,
-    authSmoke,
-    outputDir: path.resolve(outputDir),
-  }
+  auditStatus: 'passed' | 'incomplete' | 'failed' | 'skipped'
 }
 
 function requireEnv(name: string): string {
@@ -171,18 +60,12 @@ function readPositiveIntegerEnv(name: string, fallback: number): number {
 }
 
 async function renderJob(options: CliOptions): Promise<string> {
-  const templatePath = path.join(PROJECT_ROOT, 'JOB.template.md')
-  const template = await fs.readFile(templatePath, 'utf8')
-  const focus = options.focus ? `Approved focus: ${options.focus}` : ''
-  const rendered = template
-    .split('{{ADVISORY_URL}}').join(options.advisory)
-    .split('{{OPTIONAL_FOCUS}}').join(focus)
-    .split('{{TASK_ID}}').join(options.taskId)
-
-  if (/\{\{[A-Z0-9_]+\}\}/.test(rendered)) {
-    throw new Error('JOB.template.md contains an unresolved template variable')
-  }
-  return rendered.endsWith('\n') ? rendered : `${rendered}\n`
+  if (options.authSmoke) return ''
+  const [template, brief] = await Promise.all([
+    fs.readFile(path.join(PROJECT_ROOT, 'JOB.template.md'), 'utf8'),
+    fs.readFile(options.briefFile, 'utf8'),
+  ])
+  return renderJobText(template, options, brief)
 }
 
 type RvAuthFile = {
@@ -242,10 +125,10 @@ async function uploadJobFiles(sandbox: Sandbox, job: string): Promise<void> {
   await sandbox.fs.uploadFile(path.join(PROJECT_ROOT, 'AGENTS.md'), `${REMOTE_WORKSPACE}/AGENTS.md`)
   await sandbox.fs.uploadFile(Buffer.from(job, 'utf8'), `${REMOTE_WORKSPACE}/JOB.md`)
   // Keep the lightweight launcher current without rebuilding the heavyweight
-  // toolchain snapshot. Its pinned dependencies remain in /opt/cyberswe-agent.
+  // toolchain snapshot. Its pinned dependencies remain in /opt/swegen-agent.
   await sandbox.fs.uploadFile(
     path.join(PROJECT_ROOT, 'agent', 'index.ts'),
-    '/opt/cyberswe-agent/index.ts',
+    '/opt/swegen-agent/index.ts',
   )
   await sandbox.fs.uploadFile(
     path.join(PROJECT_ROOT, 'scripts', 'audit_handoff.py'),
@@ -271,14 +154,14 @@ async function configureRvAuthentication(sandbox: Sandbox, openRouterApiKey: str
 }
 
 async function runCodexWorker(sandbox: Sandbox, prompt: string): Promise<void> {
-  const sessionId = `cyberswe-${Date.now()}`
+  const sessionId = `swegen-${Date.now()}`
 
   await sandbox.process.createSession(sessionId)
   try {
     const command = await sandbox.process.executeSessionCommand(
       sessionId,
       {
-        command: `${environmentPrefix({ PROMPT: prompt })} env -u OPENAI_API_KEY -u CODEX_API_KEY /opt/cyberswe-agent/node_modules/.bin/tsx /opt/cyberswe-agent/index.ts`,
+        command: `${environmentPrefix({ PROMPT: prompt })} env -u OPENAI_API_KEY -u CODEX_API_KEY /opt/swegen-agent/node_modules/.bin/tsx /opt/swegen-agent/index.ts`,
         runAsync: true,
         suppressInputEcho: true,
       },
@@ -309,44 +192,16 @@ async function runCodexWorker(sandbox: Sandbox, prompt: string): Promise<void> {
 
 function initialWorkerPrompt(): string {
   return [
-    `Read ${REMOTE_WORKSPACE}/JOB.md first.`,
-    `Codex has already discovered and injected ${REMOTE_WORKSPACE}/AGENTS.md as repository instructions. Follow it as the authoritative factory policy, but do not cat, sed, print, or reread that file into the conversation.`,
-    `This is authorized defensive regression testing of a public advisory, performed only against a vendored open-source repository inside an isolated disposable sandbox.`,
-    `Do not access live targets or real credentials.`,
-    `Your final filesystem layout must be unambiguous: ${REMOTE_OUTPUT} contains one file total, named <instance-id>-draft-handoff.zip (or <instance-id>-recovery-handoff.zip). For a normal handoff, that one outer ZIP contains the unmodified rv-submit task ZIP, reasoning-notes.md, draft-proposal.txt, and only when needed validation-summary.md. Those component files belong inside the outer ZIP, never beside it under ${REMOTE_OUTPUT}. Probe-budget exhaustion requires the normal draft ZIP, not recovery. Never leave completed work only inside the disposable sandbox.`,
+    `Read ${REMOTE_WORKSPACE}/JOB.md and use $swe-multimodal-task-author.`,
+    `Follow the injected AGENTS.md and the supplied task assignment.`,
+    `You are the outer agent. Download the assigned Helix task, capture real broken/working media, and supply the shortest fair prompt.`,
+    `Guide the technical build through a recorded helix task author session; verify starter/reference behavior and local oracle.`,
+    `Run judgment and four probes in five isolated parallel lanes; inspect findings and require general repairs. Rerun only affected checks, with at most five reruns per probe.`,
+    `Finalize reasoning.md and disputes.md through recorded saves and wait for trace confirmation.`,
+    `Return one ZIP in ${REMOTE_OUTPUT}: <task-name>-handoff.zip containing the unchanged Helix task ZIP and validation-summary.md.`,
+    `If blocked or retry limits are exhausted, return <task-name>-recovery-handoff.zip with a work-in-progress ZIP and failure-summary.md, clearly marked incomplete.`,
+    `Do not upload, run hosted evaluations, or submit unless the assigned job includes those actions.`,
   ].join(' ')
-}
-
-function recoveryWorkerPrompt(): string {
-  return [
-    `Continue from the existing workspace.`,
-    `Do not repeat completed work.`,
-    `Read ${REMOTE_WORKSPACE}/JOB.md, inspect the files and validation state already present, and finish the remaining work.`,
-    `Codex has already discovered and injected ${REMOTE_WORKSPACE}/AGENTS.md as repository instructions. Follow it, but do not cat, sed, print, or reread that file into the conversation.`,
-    `This is local authorized patch validation of a public advisory against a vendored open-source repository in an isolated disposable sandbox.`,
-    `Do not access live targets or real credentials.`,
-    `Your final filesystem layout must be unambiguous: ${REMOTE_OUTPUT} contains one file total, named <instance-id>-draft-handoff.zip (or <instance-id>-recovery-handoff.zip). For a normal handoff, that one outer ZIP contains the unmodified rv-submit task ZIP, reasoning-notes.md, draft-proposal.txt, and only when needed validation-summary.md. Those component files belong inside the outer ZIP, never beside it under ${REMOTE_OUTPUT}. Probe-budget exhaustion requires the normal draft ZIP, not recovery. Never leave completed work only inside the disposable sandbox.`,
-  ].join(' ')
-}
-
-async function hasCyberPolicyFailure(sandbox: Sandbox): Promise<boolean> {
-  const result = await sandbox.process.executeCommand(
-    `test -s '${REMOTE_FAILURE_LOG}' && grep -Eqi 'cyber_policy|possible cybersecurity risk' '${REMOTE_FAILURE_LOG}'`,
-    REMOTE_WORKSPACE,
-    undefined,
-    30,
-  )
-  return result.exitCode === 0
-}
-
-async function runCodexWorkerWithCyberRetry(sandbox: Sandbox): Promise<void> {
-  try {
-    await runCodexWorker(sandbox, initialWorkerPrompt())
-  } catch (error) {
-    if (!(await hasCyberPolicyFailure(sandbox))) throw error
-    console.warn('Codex cyber-policy refusal detected; retrying once in a fresh thread from the existing workspace.')
-    await runCodexWorker(sandbox, recoveryWorkerPrompt())
-  }
 }
 
 async function runStreamedSessionCommand(
@@ -419,6 +274,11 @@ async function logoutCodex(sandbox: Sandbox): Promise<void> {
   console.log('Removed the sandbox\'s stored Codex login.')
 }
 
+async function disconnectHelix(sandbox: Sandbox): Promise<void> {
+  const result = await sandbox.process.executeCommand('helix disconnect', REMOTE_WORKSPACE, undefined, 60)
+  if (result.exitCode !== 0) console.warn('Helix disconnect did not complete; worker cleanup still required.')
+}
+
 async function tryLogoutCodex(sandbox: Sandbox): Promise<boolean> {
   try {
     await logoutCodex(sandbox)
@@ -461,12 +321,12 @@ entry = ZipInfo('smoke.txt', date_time=(1980, 1, 1, 0, 0, 0))
 entry.compress_type = ZIP_STORED
 entry.external_attr = 0o100644 << 16
 with ZipFile(archive, 'w') as bundle:
-    bundle.writestr(entry, b'cyberswe-controller-smoke\\n')
+    bundle.writestr(entry, b'swegen-controller-smoke\\n')
 print(archive)
 `.trimStart()
 
 async function createDryRunArtifact(sandbox: Sandbox): Promise<void> {
-  const remoteScript = '/tmp/cyberswe-controller-smoke.py'
+  const remoteScript = '/tmp/swegen-controller-smoke.py'
   await sandbox.fs.uploadFile(Buffer.from(DRY_RUN_SCRIPT, 'utf8'), remoteScript)
   const result = await sandbox.process.executeCommand(`python3 ${remoteScript}`, REMOTE_WORKSPACE, undefined, 60)
   if (result.exitCode !== 0) throw new Error(`dry-run artifact creation failed: ${result.result}`)
@@ -491,76 +351,12 @@ async function configureRv(sandbox: Sandbox): Promise<void> {
   console.log('Realm Verifier authentication preflight is ready.')
 }
 
-function validateArchiveEntries(entries: string[], dryRun: boolean, artifactName: string): void {
-  if (entries.length === 0) throw new Error('downloadable ZIP is empty')
-  for (const entry of entries) {
-    const parts = entry.split('/')
-    if (
-      entry.startsWith('/') ||
-      entry.includes('\\') ||
-      parts.some((part) => part === '..')
-    ) {
-      throw new Error(`downloadable ZIP contains an unsafe path: ${entry}`)
-    }
-  }
-
-  if (dryRun) {
-    if (entries.length !== 1 || entries[0] !== 'smoke.txt') {
-      throw new Error(`dry-run ZIP has unexpected entries: ${entries.join(', ')}`)
-    }
-    return
-  }
-
-  if (artifactName.endsWith('-recovery-handoff.zip')) {
-    if (entries.length !== 2 || entries.some((entry) => entry.includes('/'))) {
-      console.warn(`Recovery handoff is noncanonical but will still be downloaded: ${entries.join(', ')}`)
-      return
-    }
-    if (!entries.includes('failure-summary.md')) console.warn('Recovery handoff is missing failure-summary.md.')
-    const workInProgress = entries.filter((entry) => entry.endsWith('-work-in-progress.zip'))
-    if (workInProgress.length !== 1) {
-      console.warn('Recovery handoff does not contain exactly one *-work-in-progress.zip.')
-    }
-    return
-  }
-
-  const rawTaskRoots = entries
-    .filter((entry) => /^[^/]+\/task\.toml$/.test(entry))
-    .map((entry) => entry.split('/')[0])
-  if (rawTaskRoots.length === 1) {
-    console.warn('Worker returned the bare rv-submit task ZIP; downloading it instead of failing the job.')
-    return
-  }
-
-  if (artifactName.endsWith('-controller-handoff.zip')) {
-    if (!entries.some((entry) => entry.endsWith('.zip'))) {
-      console.warn('Controller-collected handoff contains no nested ZIP; preserving the available output anyway.')
-    }
-    return
-  }
-
-  if ((entries.length !== 3 && entries.length !== 4) || entries.some((entry) => entry.includes('/'))) {
-    console.warn(`Handoff ZIP is noncanonical but will still be downloaded: ${entries.join(', ')}`)
-    return
-  }
-  if (!entries.includes('reasoning-notes.md')) console.warn('Handoff ZIP is missing reasoning-notes.md.')
-  if (!entries.includes('draft-proposal.txt')) console.warn('Handoff ZIP is missing draft-proposal.txt.')
-  const allowedNotes = new Set(['reasoning-notes.md', 'draft-proposal.txt', 'validation-summary.md'])
-  const unexpectedNotes = entries.filter((entry) => !entry.endsWith('.zip') && !allowedNotes.has(entry))
-  if (unexpectedNotes.length > 0) console.warn(`Handoff ZIP has unexpected notes: ${unexpectedNotes.join(', ')}`)
-  const nestedTasks = entries.filter((entry) => /^[A-Za-z0-9._-]+\.zip$/.test(entry))
-  if (nestedTasks.length !== 1) {
-    console.warn('Handoff ZIP does not contain exactly one unmodified rv submit ZIP.')
-  }
-}
-
-async function auditNestedTaskArchive(
+async function auditTaskArchive(
   sandbox: Sandbox,
   remotePath: string,
-  artifactName: string,
   dryRun: boolean,
-): Promise<void> {
-  if (dryRun || !artifactName.endsWith('-draft-handoff.zip')) return
+): Promise<'passed' | 'incomplete' | 'failed' | 'skipped'> {
+  if (dryRun) return 'skipped'
   let result: string
   try {
     result = await executeChecked(
@@ -569,8 +365,8 @@ async function auditNestedTaskArchive(
       300,
     )
   } catch (error) {
-    console.warn(`Archive quality audit failed; preserving and downloading the handoff anyway: ${String(error)}`)
-    return
+    console.warn(`Multimodal archive audit failed; preserving and downloading the handoff: ${String(error)}`)
+    return 'failed'
   }
   let parsed: {
     status?: unknown
@@ -583,21 +379,26 @@ async function auditNestedTaskArchive(
   try {
     parsed = JSON.parse(result) as typeof parsed
   } catch {
-    console.warn(`Archive quality audit returned invalid JSON; preserving the handoff anyway: ${result}`)
-    return
+    console.warn(`Archive quality audit returned invalid JSON; preserving the handoff: ${result}`)
+    return 'failed'
+  }
+  if (parsed.status === 'incomplete') {
+    console.warn('Downloaded handoff is explicitly incomplete and needs follow-up.')
+    return 'incomplete'
   }
   if (parsed.status !== 'ok') {
-    console.warn(`Archive quality audit reported a problem; preserving the handoff anyway: ${result}`)
-    return
+    console.warn(`Archive quality audit reported a problem; preserving the handoff: ${result}`)
+    return 'failed'
   }
   console.log(
-    `Nested task archive verified: ${String(parsed.task)}; ` +
+    `Multimodal task archive verified: ${String(parsed.task)}; ` +
       `${String(parsed.commits)} commits; ` +
       `${String(parsed.fail_to_pass)} F2P; ${String(parsed.pass_to_pass)} P2P`,
   )
   if (Array.isArray(parsed.warnings)) {
     for (const warning of parsed.warnings) console.warn(`Archive audit warning: ${String(warning)}`)
   }
+  return 'passed'
 }
 
 async function normalizeRemoteOutput(sandbox: Sandbox): Promise<void> {
@@ -619,7 +420,7 @@ async function normalizeRemoteOutput(sandbox: Sandbox): Promise<void> {
   const zipFiles = files.filter((name) => name.endsWith('.zip'))
   const base = zipFiles.length === 1
     ? zipFiles[0].replace(/\.zip$/, '')
-    : 'cyberswe-output'
+    : 'swegen-output'
   const collectedName = `${base}-controller-handoff.zip`
   const temporaryPath = `/tmp/${collectedName}`
   const quotedFiles = files.map((name) => `'${name}'`).join(' ')
@@ -654,15 +455,15 @@ async function inspectRemoteArtifact(sandbox: Sandbox, dryRun: boolean): Promise
   await executeChecked(sandbox, `unzip -tq '${remotePath}'`)
   const entryText = await executeChecked(sandbox, `unzip -Z1 '${remotePath}'`)
   const entries = entryText.split('\n').map((entry) => entry.trim()).filter(Boolean)
-  validateArchiveEntries(entries, dryRun, name)
-  await auditNestedTaskArchive(sandbox, remotePath, name, dryRun)
+  validateArchiveEntries(entries, dryRun)
+  const auditStatus = await auditTaskArchive(sandbox, remotePath, dryRun)
 
   const size = Number(sizeText)
   const sha256 = shaText.split(/\s+/)[0]
   if (!Number.isSafeInteger(size) || size <= 0) throw new Error(`invalid remote ZIP size: ${sizeText}`)
   if (!/^[a-f0-9]{64}$/.test(sha256)) throw new Error(`invalid remote SHA-256: ${shaText}`)
 
-  return { name, path: remotePath, size, sha256 }
+  return { name, path: remotePath, size, sha256, auditStatus }
 }
 
 async function sha256File(filePath: string): Promise<string> {
@@ -724,12 +525,18 @@ async function downloadFailureLog(sandbox: Sandbox, outputDir: string): Promise<
 }
 
 async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2))
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(usage())
+    return
+  }
+  const options = parseArgs(process.argv.slice(2), process.env.LOCAL_OUTPUT_DIR || './outputs')
   const job = await renderJob(options)
   const runtimeAssets = options.authSmoke
     ? undefined
     : await prepareRuntimeAssets(PROJECT_ROOT, process.env.MEDIA_CAPTURE_KIT_DIR)
-  const openRouterApiKey = options.authSmoke ? undefined : await loadOpenRouterApiKey()
+  if (!options.authSmoke && !runtimeAssets) throw new Error('MEDIA_CAPTURE_KIT_DIR is required for multimodal task jobs')
+  const expectedAccount = options.authSmoke || options.dryRun ? undefined : requireEnv('HELIX_EXPECTED_ACCOUNT')
+  const openRouterApiKey = options.authSmoke || options.dryRun ? undefined : await loadOpenRouterApiKey()
 
   if (options.dryRun) {
     console.log('--- Rendered JOB.md ---')
@@ -752,7 +559,7 @@ async function main(): Promise<void> {
   const sandboxKind = options.dryRun ? 'smoke' : options.authSmoke ? 'auth-smoke' : 'job'
   const sandbox = await daytona.create(
     {
-      name: `cyberswe-${sandboxKind}-${Date.now()}`,
+      name: `swegen-${sandboxKind}-${Date.now()}`,
       snapshot,
       envVars,
       public: false,
@@ -767,6 +574,7 @@ async function main(): Promise<void> {
   )
   console.log(`Sandbox created: ${sandbox.id} (${sandbox.name})`)
 
+  let handoffAudit: RemoteArtifact['auditStatus'] = 'skipped'
   let authenticated = false
   let deleted = false
   let handlingSignal = false
@@ -775,6 +583,7 @@ async function main(): Promise<void> {
     handlingSignal = true
     console.error(`\nReceived ${signal}; logging out and destroying the disposable sandbox.`)
     await tryLogoutCodex(sandbox)
+    await disconnectHelix(sandbox).catch(() => undefined)
     try {
       await sandbox.delete()
       deleted = true
@@ -796,10 +605,16 @@ async function main(): Promise<void> {
       console.log(`Media capture kit and multimodal skill uploaded and SHA-256 verified (${runtimeAssets.files.length} files).`)
     }
     if (openRouterApiKey) await configureRvAuthentication(sandbox, openRouterApiKey)
-    await configureRv(sandbox)
+    if (!options.authSmoke && !options.dryRun) await configureRv(sandbox)
     if (!options.dryRun) {
       await loginCodex(sandbox)
       authenticated = true
+    }
+    if (expectedAccount) {
+      console.log('Starting Helix pairing for this disposable worker; approve the printed device request.')
+      const quotedAccount = quoteShell(expectedAccount)
+      await runStreamedSessionCommand(sandbox, 'helix-setup',
+        `helix setup --root /home/daytona/helix-tasks --expected-account ${quotedAccount}`)
     }
 
     if (options.authSmoke) {
@@ -810,11 +625,12 @@ async function main(): Promise<void> {
     } else {
       await executeChecked(sandbox, 'find /output -mindepth 1 -maxdepth 1 -delete')
       await executeChecked(sandbox, `rm -f '${REMOTE_FAILURE_LOG}'`)
-      await runCodexWorkerWithCyberRetry(sandbox)
+      await runCodexWorker(sandbox, initialWorkerPrompt())
     }
 
     if (!options.authSmoke) {
       const artifact = await inspectRemoteArtifact(sandbox, options.dryRun)
+      handoffAudit = artifact.auditStatus
       console.log(`Remote artifact: ${artifact.path} (${artifact.size} bytes, sha256 ${artifact.sha256})`)
       const localPath = await downloadAndVerify(sandbox, artifact, options.outputDir, options.dryRun)
       console.log(`Verified local artifact: ${localPath}`)
@@ -824,6 +640,7 @@ async function main(): Promise<void> {
       await logoutCodex(sandbox)
       authenticated = false
     }
+    if (expectedAccount) await disconnectHelix(sandbox)
     console.log(`Deleting completed sandbox ${sandbox.id}...`)
     await sandbox.delete()
     deleted = true
@@ -832,10 +649,11 @@ async function main(): Promise<void> {
         ? 'Authentication smoke completed successfully.'
         : options.dryRun
           ? 'Dry run completed successfully.'
-          : 'CyberSWE draft handoff completed successfully.',
+          : `Multimodal handoff downloaded and verified (archive audit: ${handoffAudit}).`,
     )
   } catch (error) {
     await tryLogoutCodex(sandbox)
+    await disconnectHelix(sandbox).catch(() => undefined)
     authenticated = false
     try {
       const failureLog = await downloadFailureLog(sandbox, options.outputDir)

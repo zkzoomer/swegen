@@ -1,5 +1,5 @@
 #!/opt/drive-uploader/bin/python
-"""Upload a completed CyberSWE task ZIP to a dedicated Google Drive folder."""
+"""Upload a completed SWE Multimodal task ZIP to a dedicated Google Drive folder."""
 
 from __future__ import annotations
 

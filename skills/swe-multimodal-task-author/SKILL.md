@@ -1,6 +1,6 @@
 ---
 name: swe-multimodal-task-author
-description: "Drive an assigned SWE Multimodal task from a Helix link in Daytona: capture real broken/working media, supply brief task text, guide a recorded inner author session, validate judges and four probes, and return a task ZIP. Use for the outer Helix agent; CyberSWE advisory generation has a separate workflow."
+description: "Drive an assigned SWE Multimodal task from a Helix link in Daytona: capture real broken/working media, supply brief task text, guide a recorded inner author session, validate judges and four probes, and return a task ZIP. Use for the outer Helix task-authoring agent."
 ---
 
 # SWE Multimodal Task Author

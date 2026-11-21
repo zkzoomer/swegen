@@ -1,12 +1,12 @@
 {
   "name": "codex-sdk",
   "version": "1.0.0",
-  "description": "A coding agent powered by the Codex SDK and Daytona sandboxes.",
+  "description": "SWE Multimodal task authoring with Helix, Codex, and Daytona.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "npm run build && node dist/index.js",
-    "test": "npm run build && node --test tests/runtime-assets.test.cjs"
+    "test": "npm run build && node --test tests/*.test.cjs && python3 -B -m unittest discover -s tests -p 'test_*.py'"
   },
   "keywords": [
     "codex",

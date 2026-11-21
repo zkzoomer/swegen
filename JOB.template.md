@@ -1,18 +1,22 @@
-# CyberSWE task-building job
+# Assigned SWE Multimodal task
 
-Advisory: {{ADVISORY_URL}}
-{{OPTIONAL_FOCUS}}
+Helix task: {{TASK_URL}}
 
-Realm task ID: {{TASK_ID}}
-Task ID status: assigned by the controller invocation
-Authors: [{ name = "Sergio Martinez", email = "sema8047@expert.micro1.ai" }]
+Use `$swe-multimodal-task-author` as the outer worker. Follow the injected `AGENTS.md`
+and the skill's ordered workflow. Keep the assigned scope and downloaded metadata.
+Author-side PR/base/reference information must stay out of the solver environment.
 
-Build and validate the CyberSWE task draft for this approved advisory by following
-`/home/daytona/workspace/AGENTS.md`.
+## Assignment and limits
 
-Use the Realm task ID and exact author metadata above in `task.toml`. Do not substitute a
-different author or invent another task ID.
+{{TASK_BRIEF}}
 
-Do not select a different advisory. If this advisory contains several independent
-vulnerabilities and the optional focus does not identify which one was approved, report that
-the job needs a narrower focus rather than bundling unrelated issues or choosing one silently.
+## Delivery
+
+Return one `/output/<task-name>-handoff.zip` containing the unchanged official Helix
+task ZIP and `validation-summary.md`. The task explanation is `reasoning.md` with
+five short sections. Save final task files through recorded authoring, confirm trace
+saving, and state actual QC results and retry counts. No upload, hosted evaluation,
+or final submission is included unless the assignment above explicitly requests it.
+
+If blocked, preserve permitted task work in a recovery handoff and state that it is
+incomplete. Never claim current oracle/probe/calibration success without evidence.
