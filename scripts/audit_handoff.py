@@ -13,11 +13,14 @@ import tomllib
 from pathlib import Path, PurePosixPath
 from zipfile import BadZipFile, ZipFile
 
+REQUIRED_PROBE_PATHS = tuple(f'qc_artifacts/probes/{name}.md' for name in
+                             ('gameability', 'altsolve', 'leakage', 'media-ablation'))
+
 REQUIRED_TASK_PATHS = (
     'task.toml', 'instruction.md', 'reasoning.md', 'environment/Dockerfile',
     'solution/solve.sh', 'solution/gold_patch.diff', 'tests/test.sh',
     'tests/config.json', 'tests/test_patch.diff', 'tests/log_parsers.py',
-)
+) + REQUIRED_PROBE_PATHS
 REASONING_HEADINGS = (
     'what this task requires', 'why it is non-trivial', 'why the media is necessary',
     'the change', 'tests',
@@ -197,7 +200,7 @@ def audit(archive_path: Path) -> dict[str, object]:
                     nested = [p for p in files if '/' not in p and p.lower().endswith('.zip')]
                     if len(nested) != 1:
                         raise AuditError('controller handoff must contain exactly one task ZIP')
-                    recovery = archive_path.name.endswith('-recovery-handoff.zip')
+                    recovery = bool(re.search(r'-recovery-handoff(?:-[0-9]+)?\.zip$', archive_path.name))
                     required_notes = 'failure-summary.md' if recovery else 'validation-summary.md'
                     if sorted(files) != sorted([nested[0], required_notes]):
                         raise AuditError(f'handoff must contain only the task ZIP and {required_notes}')

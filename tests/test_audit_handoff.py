@@ -62,6 +62,13 @@ class AuditTests(unittest.TestCase):
     def test_two_file_multimodal_handoff(self):
         self.assertEqual(auditor.audit(self.handoff())['status'],'ok')
 
+    def test_missing_probe_reports_fail_for_task_and_handoff(self):
+        (self.task/'qc_artifacts/probes/gameability.md').unlink()
+        with self.assertRaisesRegex(auditor.AuditError, 'qc_artifacts/probes/gameability.md'):
+            auditor.audit(self.bundle())
+        with self.assertRaisesRegex(auditor.AuditError, 'qc_artifacts/probes/gameability.md'):
+            auditor.audit(self.handoff())
+
     def test_audits_bare_task_not_only_special_handoff_names(self):
         (self.task/'reasoning.md').unlink()
         with self.assertRaisesRegex(auditor.AuditError,'reasoning.md'):
@@ -99,6 +106,15 @@ class AuditTests(unittest.TestCase):
     def test_recovery_is_incomplete_not_passed(self):
         (self.task/'reasoning.md').unlink()
         self.assertEqual(auditor.audit(self.handoff(recovery=True))['status'],'incomplete')
+
+    def test_timestamped_controller_recovery_stays_incomplete(self):
+        (self.task/'reasoning.md').unlink()
+        archive=self.handoff(recovery=True)
+        timestamped=archive.with_name('demo-recovery-handoff-1795454764323.zip')
+        archive.rename(timestamped)
+        result=auditor.audit(timestamped)
+        self.assertEqual(result['status'],'incomplete')
+        self.assertEqual(result['format'],'recovery')
 
     def test_unsafe_paths_in_normal_and_recovery_archives_are_rejected(self):
         path=self.stage/'unsafe.zip'
