@@ -1,86 +1,65 @@
-# Worker launch contract
+# Local agents and persistent remote compute
 
-The operator's machine creates a private Daytona worker. Provision this entire skill
-and the proprietary capture kit through the existing runtime asset uploader, then
-launch the outer agent with the prompt below. Register the skill in that agent's
-workspace `.agents/skills/`. The controller's worker policy and job template are
-multimodal-only; the assignment brief is supplied with `--brief-file`.
+The controller runs both agents on the operator's machine. The outer is a local
+Codex SDK thread; the inner is the actual interactive `helix task author` process.
+Daytona contains execution copies, the private capture kit, Docker and rv, with no
+Helix pairing or task-authoring agent. The final official oracle runs locally.
 
-## Initial outer-agent prompt
+## Launch contract
 
-Replace the task-specific fields before launch. The build/QC flow is shared; task
-facts are inputs, not additions to the generic skill.
+The operator supplies an existing task URL, assignment brief and limits through
+`--task-url` and `--brief-file`. The launcher checks local Helix/Codex authentication,
+Python, uv and Docker, downloads the task locally (or verifies --task-dir), and
+creates one private persistent compute worker. It installs the runtime kit and rv
+credential there. Multimodal probes in rv 0.0.152 require Codex regardless of judge mode,
+so the launcher also transfers only the local Codex login over the private SDK file
+channel, with directory/file permissions 700/600. It makes one live, bounded Codex
+subscription request before either task agent starts. rv forwards the login to probe containers.
+It is excluded from task files and review logs and removed before retaining a failed
+worker. A successful worker is deleted after evidence transfer. The local outer workspace receives this skill, JOB.md and the
+runtime context path. Read context.json; it contains paths and worker ID, no keys.
 
-```text
-Use $swe-multimodal-task-author to prepare this assigned task.
+Current compatible worker snapshots need no rebuild: helper scripts upload at
+runtime. The image still includes Helix/Codex binaries for compatibility, but they
+do not run remote Helix authoring. Codex runs remotely only for rv probe trials. Existing local credentials are reused;
+there is no per-worker Codex device login or Helix expected-account pairing.
 
-Helix task: <existing task URL>
-Assigned issue and scope: <brief supplied assignment>
-Repository/base and issue or PR: <author-side references>
-Output: return the complete Helix task ZIP to /output and a brief validation summary.
-Upload/submission: return-only unless this job explicitly includes upload.
+Use the [bridge reference](local-bridge.md) for executable commands. The private
+Unix socket exposes terminal controls, file snapshots, remote jobs, downloads and
+final local oracle. No public listening port or direct incoming connection to the
+laptop is needed. Keep the laptop awake and connected throughout execution.
 
-Understand the issue, capture clear real broken/working media with the installed
-capture kit, and write the shortest fair initial request with /media links. Guide a
-recorded helix task author session until the task is complete and oracle passes.
-Run the judgment lane and four separate probes in parallel on one frozen snapshot.
-Inspect findings carefully. Require general fixes, review them, and rerun only affected
-checks. Each probe has at most five reruns after its initial run, errors included.
-Save supported disputes in task-root disputes.md. Finish recorded sessions, finalize
-simple five-section reasoning.md through a recorded save, and return the inspected ZIP.
+## Readiness and honest limits
 
-Evaluation: <not included, or live Helix stages/models and budget>
-If included, screen with the fair lower-bound prompt; <=2 true passes out of four is
-promising, then clarify toward 1–2/4. Zero is not final proof of fair solvability.
-Total run/spend/time budget: <concrete limits, including capture workers and QC>
-```
+- A real inner session must show a usable terminal, accept instructions, close with
+  exit code zero and have a verified complete/uploaded Helix journal. No console
+  phrase is required. The inner launch applies tui.resume_cwd="session" through a
+  private child-process wrapper, preserving the operator's config and login. It also
+  scopes workspace-write roots to the linked task and staging, with network access
+  for the supplied bridge; genuine approval requests still go to the outer. These
+  child-only settings follow the [Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference). PTY tests establish
+  transport behavior, not live task access or upload acceptance.
+- The local task is authoritative. The inner makes technical task edits; the outer
+  writes and saves instruction.md and reasoning.md with outer-save-text. Do not make final edits remotely
+  and import a ZIP merely to manufacture a recording.
+- Reuse worker filesystem, jobs and Docker cache. Sync sends a full initial snapshot
+  and then deltas, verifies hashes and reuses unchanged inputs. Clone execution copies
+  before mutating tests/probes; do not corrupt cached input snapshots.
+- Tier 2 still restricts nonessential service hosts. Docker/GitHub/OpenRouter access
+  does not prove every app dependency is reachable. Helix networking stays local.
+- Capture uses the kit library directly in the existing worker unless the assignment
+  explicitly includes separate capture workers and executor access.
+- Inspect installed rv version/stages. Run judgment and four probes against isolated
+  copies, respecting the assignment budget and shared initial-plus-five retry ceiling.
+- After all final edits, close/save inner sessions and use oracle-start. The controller
+  requires the LOCAL official oracle, explicit reward 1.0 and unchanged task hashes.
+  Remote Harbor reference checks are development evidence, not the final local oracle.
 
-Do not confuse this controller prompt with solver `instruction.md`. PRs, gold context,
-probe details, and orchestration instructions are author-only.
-
-## Image and runtime readiness
-
-`Dockerfile.swegen` builds the worker image. Its public toolchain stage
-installs pinned Helix 0.1.3, Codex, uv, and Docker; its final stage adds pinned private
-`rv`. The image contains no Helix pairing or Codex login. Build/push instructions are in
-`docker/README.md` in the controller repository. Do not snapshot an authenticated worker.
-
-Before asking the agent to build, verify:
-
-- The configured snapshot actually includes Helix: version, `task author --help`, and
-  `task zip --help`; Docker works under the actual worker identity.
-- Helix is paired for that worker and can access the assigned task. Use runtime
-  `helix setup --root /home/daytona/helix-tasks` and its supported approval flow; do
-  not assume pairing this laptop automatically paired Daytona.
-- Codex is authenticated for both outer and inner processes under the intended user.
-  Different users/homes need their own supported setup. Keep credentials out of jobs.
-- Kit/skill transfer hashes are verified and both runtime paths exist. Harbor capture
-  execution has its own supported dependency/authentication setup and authorized budget.
-- Judge/probe providers are authenticated. Inspect `rv check --list-checks --no-color`
-  on the actual worker version before launching the documented five lanes.
-- The worker has persistent staging, sufficient lifetime and memory for five concurrent
-  lanes, and a functioning terminal controller for the inner interactive session.
-
-A full run can exceed the controller's existing four-hour TTL. Choose a job lifetime
-and capture/QC budgets explicitly; do not silently truncate or count timeouts as passes.
-Pairing and Codex runtime credentials need cleanup when a disposable worker is retired.
-
-## Controller integration and live validation
-
-The launcher accepts `--task-url` and `--brief-file`, renders the multimodal job,
-uploads this skill and external capture kit, configures rv, starts Codex device login,
-and pairs Helix with `--expected-account` before starting the outer worker. The expected
-account is required for a real task job so setup needs no email-confirmation prompt.
-The controller audits bare Helix ZIPs and two-file handoffs, downloads them with hash
-verification, and reports recovery output as incomplete. These paths have offline tests.
-
-The worker uses its terminal tools to control the inner interactive session. Demonstrate
-start/send/read/clean exit and trace-save confirmation in a live worker before claiming
-unattended execution works. `helix task author --output json` is not documented as a
-headless conversation API. A missing terminal capability must return a precise blocker,
-not a direct-edit substitute for recorded authoring.
-
-Hosted rollouts/final gates need a supported interaction path; listing/downloading
-results does not start evaluation. Capture executor credentials and non-bug evidence
-procedures remain separate prerequisites. Local tests do not prove a live capture,
-paired task access, paid probe, or recorded nested session.
+The launcher automatically packages/audits the official local Helix ZIP plus the
+outer's validation-summary.md after these gates and qc-finalize. Supported disputes
+produce a clearly named review-handoff; missing or unresolved QC prevents a normal
+handoff. It preserves local work and marks
+failures incomplete, attempts a recovery ZIP and stops the compute worker for the
+configured retention window. Logs must download before normal worker deletion.
+Hosted rollouts/upload/submission remain separate authorized actions. Do not claim
+live nested-session, capture or probe success from offline tests.

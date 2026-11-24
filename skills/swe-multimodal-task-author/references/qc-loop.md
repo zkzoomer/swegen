@@ -1,6 +1,7 @@
 # Five-lane QC and bounded repairs
 
-Use after the actual local oracle is 1.0 and starter/reference controls are verified.
+Use after clean starter/reference controls and remote reference reward 1.0 are
+verified. The final official LOCAL oracle runs after QC and all final edits.
 This procedure is the user's automation policy. The master PDF defines the four
 manual probes; it does not prescribe this parallelism or the five-rerun limit.
 
@@ -26,6 +27,28 @@ The current stage is **`judgment`**, not `judges`. `--skip-judges` is not forwar
 the inspected seaworthy-backed implementation; select stages explicitly. The dynamic
 starter/oracle checks are separate from the five lanes and remain required evidence.
 
+## Automated path
+
+Prefer the implemented qc-run/worker-wait/qc-collect commands in
+[local-bridge.md](local-bridge.md). They clone inputs, run the selected lanes in
+parallel, reserve retry counts before execution, retain exact rv JSON and collect
+compact receipts. The whole judgment stage runs once; later calls select only
+affected IDs. A whole-stage execution failure with no records may be retried within
+the same ceiling. Use qc-run --checks preflight before heavy setup and again after
+the draft is complete; placeholder failures are expected initially, compatibility
+mismatches must be identified early. Static preflight uses no model calls.
+
+If an incompatible metadata check stops later static stages, preserve that failure
+and run the skipped checks using their actual explicit IDs. `qc-run --checks`
+accepts generic IDs such as `instruction-non-empty` and `dockerfile-has-from`, as
+well as `swemultimodal/...` IDs. This invokes the official checks unchanged on
+isolated copies and retains their results and shared attempt counts; it does not
+turn the metadata failure into a pass. Confirm IDs with the installed check list.
+
+The manual commands below document the underlying rv interface. Do not mix manual
+model runs into an automated job without preserving their attempts in the same
+ledger. Snapshot or session changes never reset limits.
+
 ## Initial batch: five processes in parallel
 
 | Lane | Exact selection |
@@ -50,7 +73,7 @@ finishes before any process starts. Keep this script and logs outside the task:
 ```bash
 set -euo pipefail
 
-task_dir="/absolute/path/printed/by/helix"
+task_dir="/home/daytona/task-snapshots/ACTUAL_VERIFIED_HASH"
 author_stage="/home/daytona/author-staging"
 mkdir -p "$author_stage"
 qc_dir=$(mktemp -d "$author_stage/qc-XXXXXXXX")
@@ -93,7 +116,11 @@ Inspect every lane's status/report, candidate patch, trajectory, and decisive ve
 result. A zero shell exit alone does not settle the finding. Empty output, missing
 rewards, `needs_review`, timeouts, authentication errors, or permission failures are
 not clean passes. Keep provider configuration and model IDs version-specific; old
-`RV_PROBE_AGENT=opencode` overrides may be ignored by this realm.
+`RV_PROBE_AGENT=opencode` is ignored by rv 0.0.152 multimodal probes: they
+deliberately use Codex with subscription-login forwarding. OpenRouter mode configures
+judges only. The launcher provisions the separate Codex probe login; if it is absent,
+repair authentication before spending a retry. Do not modify the managed probe to
+force a different agent.
 
 Five simultaneous model runs can also create several containers each. Size the actual
 worker/executor resources for that load. If the requested parallelism is unavailable,
@@ -103,8 +130,11 @@ report the resource blocker rather than count OOMs as task failures.
 
 Classify it as a genuine task defect, a defensibly invalid finding, or unresolved/
 infrastructure failure. Use the report's actual version, patch, logs, and observable
-behavior. A candidate labeled "correct" is not necessarily correct; an attack on
-excluded behavior is not automatically a missing requirement.
+behavior. A candidate labeled "correct" is not necessarily correct; a candidate labeled "invalid" may still be falsely
+rejected if the verifier bypasses its repaired production layer. Compare the actual
+patch and real application path. A green altsolve check is not itself proof that a
+zero-scoring candidate is a true failure. An attack on excluded behavior is not
+automatically a missing requirement.
 
 For a genuine issue, send the inner session a request such as:
 
@@ -122,8 +152,9 @@ Check for new hidden requirements, exact-call assertions, duplicated fixtures, u
 PR scope, and broken independent solutions. If reports repeat, revisit the finite
 behavior model and whole verifier once; do not grow an endless list of F2P cases.
 
-All edits happen through the recorded inner session. No mutations while a batch is
-running. After executable changes, rerun relevant starter/reference controls and the
+Technical task edits happen through the recorded inner; the outer saves its two
+prose files. Close/save the inner during long remote QC to release the shared local
+Helix queue. Send no task edits while a batch runs; reopen the inner for repairs. After executable changes, rerun relevant starter/reference controls and the
 saved alternative/negative replay set before another model probe.
 
 ## Targeted reruns, counters, and stale evidence
@@ -143,7 +174,9 @@ Use the actual failed check ID. Do not repeat the whole judgment stage to repair
 judge result. Do not rerun unaffected successful probes as a ritual. A verifier change
 can invalidate both gameability and alternative-solution evidence; a prompt/media
 change can invalidate media ablation; image/history changes can invalidate leakage.
-Those checks are affected and need reassessment. Do not call old reports current just
+Review those dependencies. Replay saved alternative/attack patches first; rerun a
+model only when the change materially invalidates its conclusion. A passing
+alternative that still passes replay does not need another model to reinvent it. Do not call old reports current just
 because their lane was previously green. Final reasoning changes need the reasoning
 judge and any other materially affected judgments, not automatically all probes.
 
@@ -155,24 +188,71 @@ including infrastructure errors and changed snapshots; do not reset on rewording
 new sessions, different models, or renamed copies. The overall run/time/spend budget
 can stop work sooner. No successful check needs five attempts.
 
-At the limit, stop that lane, preserve work, and return the finding as unresolved in
-an incomplete handoff. Never silently waive it, edit its report, or run a sixth retry.
+At the limit, stop that lane and preserve its raw result. A genuine or unresolved
+finding requires an incomplete handoff. An evidence-backed invalid finding can be
+recorded as disputed and delivered for review. Never silently waive it, edit its report, or run a sixth retry.
 
 ## Invalid findings: root disputes.md
 
-Have the inner session save a brief note in **`<task>/disputes.md`**, outside
-`environment/repo/` and `environment/media/`. Keep underlying raw evidence in private
-staging. Use this shape:
+Have the inner session save supplied notes in **`<task>/disputes.md`**, outside
+`environment/repo/` and `environment/media/`. The outer reviews and simplifies each
+note before handing it over to save.
+
+Each issue must fit **one or two tweets**: aim for 280 characters, with a maximum of
+560 for the explanation, excluding the heading and one evidence link. Use 2–4 short
+sentences: what the check claims, what actually happened and why that meets the task,
+and what should be reviewed. Use everyday words. Avoid unexplained jargon, acronyms,
+code walkthroughs and long quotes. Keep run IDs, hashes, patches and detailed proof
+in the linked staging evidence. Do not lose an important caveat just to shorten it.
+
+State once at the top of the file: "These disputes are awaiting review."
+Then use this shape for each issue:
 
 ```markdown
-## <check ID> — <snapshot hash / run ID>
+## <short plain title> (`<check ID>`)
 
-Finding: <what was claimed>.
-Why disputed: <contract-backed reason and concrete counterevidence>.
-Evidence: <candidate patch/log path and decisive result>.
-Requested resolution: <reassess or acknowledge excluded behavior>.
-Status: disputed; not represented as a clean pass or platform acceptance.
+<Claim, observation, reason and request in one short paragraph.>
+
+Evidence: [<short readable label>](<staging evidence path>)
 ```
+
+Example wording:
+
+> The check rejects leaving out an optional setting. Leaving it out uses the same
+> default, and we checked that both versions behave the same. Please accept both.
 
 Missing evidence calls for investigation, not an invented dispute. A file saved locally
 is not a posted/accepted platform dispute. See [review-and-calibration.md](review-and-calibration.md).
+
+
+## Final QC gate
+
+After all final task edits, use qc-collect and qc-finalize. The controller checks raw
+results and final input hashes, not a prose success claim. Supply disputes only for
+completed invalid findings, with concrete staging evidence and a recorded task-root
+disputes.md note. Execution errors cannot be waived as disputes. All passes produce
+a normal handoff; supported disputes produce a review-handoff; missing, stale or
+unresolved results produce an incomplete recovery handoff. A dispute is not a
+platform acceptance. Keep raw reports unchanged.
+
+## Restore reports before final delivery
+
+QC runs on isolated copies, so its generated reports do not automatically enter the
+managed task. Before closing the recorded inner and running the final local oracle,
+have the inner restore the latest original reports into these task-root paths:
+
+- `qc_artifacts/probes/gameability.md`
+- `qc_artifacts/probes/altsolve.md`
+- `qc_artifacts/probes/leakage.md`
+- `qc_artifacts/probes/media-ablation.md`
+- `qc_artifacts/judges/swemultimodal/<check>.md` for each completed judge.
+
+The controller repository provides `scripts/stage_qc_reports.py STAGING TASK_DIR`.
+It decodes original Markdown artifacts from the saved canonical rv result JSON
+files (`gameability-initial.json`, `gameability-final-rerun5.json`, etc.), retaining
+the latest attempt for each check. The inner invokes it through recorded authoring.
+Keep original FAILs and error statuses; a dispute does not rewrite a report. Keep
+raw jobs, full trajectories, credentials and capture tools outside the task.
+Verify the exported official task ZIP contains all four nonempty probe Markdown
+files. The handoff audit rejects their absence. Copying reports does not require
+rerunning probes.

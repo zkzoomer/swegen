@@ -21,8 +21,10 @@ settings to exaggerate the failure, or invent reporter-provided expected output.
    base/PR outside the managed task. Use a preliminary recorded session only if that
    prerequisite cannot be established there; report the ordering exception.
 3. Build temporary capture tasks and run jobs outside the managed task root. The
-   installed README documents remote Modal/Daytona execution; use supported setup,
-   models, and commands rather than treating historical examples as permanent APIs.
+   installed README documents direct library capture and separate Harbor workers.
+   Direct capture can run in Docker inside the existing worker without extra Daytona
+   credentials. Separate workers require their own executor access and budget; see
+   [capture-kit.md](capture-kit.md). Use the installed API and commands.
 4. For the kit's bug/fix procedure, inspect both `bug.*` and `fixed.*`, audit commands
    and `repro/run.sh`, and verify the same steps reproduce the symptom only before
    the fix. A reward of 1 checks basic artifacts, not whether media shows the bug.

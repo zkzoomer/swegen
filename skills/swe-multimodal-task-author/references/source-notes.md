@@ -31,19 +31,20 @@ and classify probes before edits. Those counts, fixtures, run IDs, model aliases
 historical database repairs, and upstream fix are not defaults or repair recipes.
 
 The controller now runs only the Helix multimodal workflow: task-URL/assignment
-inputs, the installed outer skill, runtime pairing/authentication, and Helix ZIP
+inputs, the installed outer skill, local Helix authentication, private probe login, and Helix ZIP
 handoffs. Runtime kit/skill provisioning and the [capture guide](capture-kit.md) were
-added on 2026-11-20. Interactive inner-session operation, capture executor access,
-non-bug evidence procedures, and hosted gates still need live validation. Offline
-controller/archive tests do not establish successful remote execution.
+added on 2026-11-20. A supervised 2026-11-21 run exercised local inner recording,
+real paired capture, remote probes and the final local oracle. That run required
+integration repairs; unattended operation, other category evidence procedures and
+hosted gates remain unproven. Offline tests do not establish live acceptance.
 
 The 2026-11-20 automation revision adds the outer launch prompt and ordered workflow,
 paired broken/working media policy, fair lower-bound screen, one judgment plus four
 parallel probe lanes, and one initial run plus at most five reruns per probe. This
 parallelism/retry ceiling is user policy, not a quote from the PDF. It changes default
 completion to returning a Helix ZIP; upload remains available in explicitly included
-jobs. The canonical explanation remains `reasoning.md`. Final prose saving may need
-a brief resumed recorded session after the main author session has closed.
+jobs. The canonical explanation remains `reasoning.md`; the outer writes and saves
+both prose files directly with outer-save-text, without another recorded segment.
 
 The local `rv` 0.0.152 check listing exposes `judgment` and four named swemultimodal
 probes. A no-network listing in the old 0.0.151 worker confirmed only three probes, with
@@ -52,3 +53,10 @@ rebuilt worker listing. Helix 0.1.3
 help confirms `author`, `author --upload-only`, and `zip --destination`. The image
 installs a pinned public binary using the official HTTPS release locator/checksum
 layout inspected at https://helix.micro1.ai/install.sh; it does not include pairing.
+
+The 2026-11-21 execution revision runs BOTH agents locally, with the actual inner
+Helix author session controlled through a private PTY bridge. Daytona now supplies
+persistent compute only, avoiding Tier 2 restrictions on Helix destinations. The
+final official oracle and Helix ZIP are local. Older descriptions of a Daytona-hosted
+outer/inner pairing are historical. This relocation does not waive recorded authoring
+or replace live evidence with fixture results.

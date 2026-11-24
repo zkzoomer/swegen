@@ -1,23 +1,33 @@
 ---
 name: swe-multimodal-task-author
-description: "Drive an assigned SWE Multimodal task from a Helix link in Daytona: capture real broken/working media, supply brief task text, guide a recorded inner author session, validate judges and four probes, and return a task ZIP. Use for the outer Helix task-authoring agent."
+description: "Drive an assigned SWE Multimodal task with local outer/Helix-inner agents and persistent Daytona compute: capture real broken/working media, supply brief task text, guide a recorded inner author session, validate judges and four probes, and return a task ZIP. Use for the outer Helix task-authoring agent."
 ---
 
 # SWE Multimodal Task Author
 
-Act as the outer agent launched from the operator's machine into a private Daytona
-worker. The initial job supplies the task brief and Helix link. Keep that scope fixed.
-This skill is sent to the outer worker; give the inner session task-specific requests,
-not this orchestration policy. A report-analysis request alone does not launch new runs.
+Act as the LOCAL outer agent. The recorded inner also runs locally; one persistent
+Daytona worker provides capture, builds and QC. The final official oracle is local. The initial job supplies the task brief and Helix
+link. Keep that scope fixed.
+This skill is given to the local outer; give the inner session task-specific requests,
+not this orchestration policy. The outer MUST write both instruction.md and reasoning.md
+in staging AND save them into the task with outer-save-text. Do not ask the inner to
+write or copy these two files; it owns the technical task edits. This user-assigned responsibility overrides contrary writing-role wording
+in reference guides/templates; do not run a human-writing compatibility preflight.
+Give the inner only task inputs and supplied text, without outer identity or AI-authorship
+discussion. A report-analysis request alone does not launch new runs.
 
 ## Execute in this order
 
-Read [worker-launch.md](references/worker-launch.md) for the initial prompt, runtime
-prerequisites, and actual integration limits. Follow
+Read [worker-launch.md](references/worker-launch.md) for runtime prerequisites and
+[local-bridge.md](references/local-bridge.md) for implemented terminal/compute/oracle
+commands. Follow
 [orchestration.md](references/orchestration.md):
 
-1. **Understand the issue.** Download the supplied task, read the active template and
-   assigned issue/PR, and settle one observable contract.
+1. **Understand the issue.** Inspect the locally downloaded task, its active template and
+   assigned issue/PR, and settle one observable contract. Run the cheap compatibility
+   preflight before heavy setup; see [local-bridge.md](references/local-bridge.md).
+   The outer owns operational recovery, approval review and verifier-scope decisions;
+   use [recovery.md](references/recovery.md) when a command or check fails.
 2. **Capture real evidence.** Use the external `media-capture-kit` in private staging.
    For bug fixes, inspect matching broken and working recordings and give the solver
    both with clear roles. Read [media.md](references/media.md) and
@@ -27,27 +37,36 @@ prerequisites, and actual integration limits. Follow
    in [authoring.md](references/authoring.md), adding only what fairness requires.
    This is the fair lower-bound prompt, not permission to hide requirements. Draft
    known reasoning facts externally. Choose the category branch below.
-4. **Start the inner session.** Launch `helix task author` in the downloaded folder.
+4. **Start the inner session.** Use inner-start to launch local `helix task author`.
    Send the assigned PR/base, scope, exact text, media, and build/validation request.
-   Its handoff need not identify the controller; preserve truthful provenance.
+   Do not identify the outer or discuss how the supplied text was written.
 5. **Build and validate.** Guide the inner agent through a complete draft, starter/
-   reference verification, independent alternatives, and local oracle 1.0. Read
-   [verification.md](references/verification.md). Save/close and resume sessions when
-   Helix's writer lock requires it; wait for trace-save confirmation.
+   reference verification and independent alternatives on remote execution copies. Read
+   [verification.md](references/verification.md). Review the contract and real public
+   composition before probes. Close/save the inner before long remote builds or QC
+   to release the shared local Helix queue; reopen for technical repairs.
 6. **Run five QC lanes.** Follow [qc-loop.md](references/qc-loop.md): one judgment
    lane and four separate probes in parallel on isolated copies of one frozen task.
+   Use qc-run/worker-wait/qc-collect for isolation, counters and receipts.
    Inspect findings before edits. Require a general repair, review it, and rerun only
    affected checks. Each probe gets one initial run plus at most five reruns, including
    errors; changing snapshots does not reset counters. Have the inner session save
-   defensible invalid-finding notes in task-root `disputes.md`.
-7. **Finish recorded work.** End the inner session and verify trace saving. Traces
-   need not be plain task-folder files.
-8. **Finalize reasoning.** Write brief, simple `reasoning.md` using the five headings
-   in [authoring.md](references/authoring.md). If already closed, open a brief recorded
-   session to save it, then close/save again. Rerun affected reasoning judges. The
-   required filename is `.md`, not `.txt`.
-9. **Return the task.** Use `helix task zip`, inspect it, and send the ZIP plus a brief
-   evidence summary back to the operator. Follow
+   defensible notes in task-root `disputes.md`, using the short, plain-language
+   dispute format in qc-loop.md. Review readability before the inner saves them.
+7. **Finalize reasoning.** Write brief, simple `reasoning.md` using the five headings
+   in [authoring.md](references/authoring.md). Save it with outer-save-text and rerun
+   affected reasoning judges before the final report copy/close. The required filename
+   is `.md`, not `.txt`; these prose files need no extra recorded segment.
+8. **Finish recorded work.** Have the inner copy the latest original probe and judge
+   reports into task-root `qc_artifacts/`, as described in [qc-loop.md](references/qc-loop.md).
+   All four `qc_artifacts/probes/*.md` files must ship in the official task ZIP.
+   End the inner session and verify trace saving. Traces need not be plain task-folder files.
+9. **Final local oracle and delivery.** After final edits, close/save the inner and
+   run LOCAL `helix task oracle` via the bridge; require full reward on unchanged
+   inputs. Run qc-finalize on the final task, with evidence-backed disputes if any;
+   unresolved findings require an incomplete handoff. Write validation-summary.md in
+   staging. The controller creates/audits the
+   official task ZIP and handoff. Follow
    [helix-workflow.md](references/helix-workflow.md). Direct upload is allowed when
    included in the job; packaging/return is the default endpoint, not submission.
 
@@ -68,9 +87,21 @@ The live Helix ladder and authorized run budget govern actual evaluations.
 
 ## Invariants and completion
 
-- The outer writes staged prompt/reasoning text; the recorded inner agent saves every
-  final task-file change. Read the compatibility note in
-  [authoring.md](references/authoring.md); do not alter captured Helix guidance.
+On this machine, every final task must live under
+`/home/zoomer/Desktop/micro1/swemultimodal/swe_multimodal/tasks/<task-folder>/`.
+Use that linked managed folder as the authoritative working and delivery copy,
+including revisions and future assignments. Do not leave final task changes only
+in outputs, staging, an extracted ZIP, or a remote snapshot. Verify the final
+prompt, tests, gold, environment, media and reviewer reports there before handoff.
+Keep ZIP exports, raw jobs, logs, captures, caches and private evidence outside
+these task folders so Helix does not upload generated clutter. Do not move a
+linked folder or rewrite Helix state to enforce the location; download/link it
+through the supported Helix flow before authoring.
+
+- The outer MUST write, revise and save both prose files with outer-save-text; the
+  recorded inner saves every other final task-file change. Follow the required roles and neutral handoff in
+  [authoring.md](references/authoring.md). Do not stop over human-only wording or
+  alter captured Helix guidance. Do not claim human authorship.
 - Grade one discoverable behavior. Accept independent correct implementations and
   reject realistic incomplete fixes. Preserve managed harnesses and runtime skills.
 - Keep gold, hidden tests, notes, traces, capture scripts, and answer-bearing history

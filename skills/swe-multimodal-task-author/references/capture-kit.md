@@ -13,18 +13,31 @@ and reads a bounded upload plan: builder, audit script, capture library, READMEs
 and root license/notice files when supplied. It excludes old jobs, caches, dependencies,
 Git metadata, and unrelated top-level files.
 
-After creating the private worker, the controller uploads the kit and this skill,
-checks every transferred file's size and SHA-256, preserves executable modes, and
-registers the skill in the outer workspace's `.agents/skills/`. Worker environment:
+After creating the private worker, the controller uploads only the kit, checks
+every transferred file's size and SHA-256, and preserves executable modes. This
+skill is registered separately in the local outer workspace's `.agents/skills/`.
+Worker environment:
 
 ```text
 MEDIA_CAPTURE_KIT_DIR=/opt/micro1/media-capture-kit
-SWE_MULTIMODAL_SKILL_DIR=/opt/swegen/skills/swe-multimodal-task-author
 ```
 
-The manifest is `/opt/swegen/runtime-assets-manifest.json`. Missing kit configuration
-leaves existing jobs unchanged; an invalid configured kit fails before sandbox creation.
-Auth-only smoke runs skip provisioning. A configured controller dry run provisions
+The manifest is `/opt/swegen/runtime-assets-manifest.json`. Task jobs require kit
+configuration; an invalid configured kit fails before sandbox creation.
+The controller separately preloads the exact kit-pinned public browser image from a
+hash-verified local archive. `context.json` identifies captureBrowserImage and
+capturePrepare. After generating a private capture task, run:
+
+```bash
+python3 /opt/swegen-agent/prepare_capture.py /home/daytona/capture-staging/ACTUAL_TASK/environment
+```
+
+Use the generated environment path, then build normally with the worker's Docker
+daemon. The helper replaces only the known browser-download step with system-dependency
+installation plus COPY from the preloaded image. Do not retry CDN mirrors, change
+Playwright versions, edit the external kit, or apply this to the final task environment.
+An unknown kit version or Dockerfile is a real compatibility error to report.
+Auth-only smoke runs are local and skip worker provisioning. A configured controller dry run provisions
 and verifies files, but does not invoke capture models.
 
 Verify the environment variable and installed builder before capture. If absent,
@@ -34,9 +47,11 @@ or prove that interactive inner-session control works.
 
 ## Prepare a capture task
 
-Use the assigned starting source. The kit requires an environment Dockerfile,
+Use the assigned starting source. Read [local-bridge.md](local-bridge.md): stage
+inputs locally, sync them, execute in the worker, and fetch media/reports to local
+staging. The local recorded inner copies chosen final files into the task. The kit requires an environment Dockerfile,
 `task.toml`, task brief, and reference patch. Prepare a disposable outer capture
-scaffold from the assigned base and upstream patch outside the managed task, so
+scaffold from the assigned base and upstream patch in local staging outside the managed task, so
 capture can precede the main `helix task author` build. This scaffold is capture
 input, not final submission content. If that prerequisite genuinely needs a recorded
 session first, report the exception and save/close that preliminary session. The
@@ -48,7 +63,7 @@ task). Never run builder output/jobs inside the managed task:
 
 ```bash
 kit_dir="${MEDIA_CAPTURE_KIT_DIR:?runtime media kit is missing}"
-task_dir="/home/daytona/author-staging/capture-source-task"
+task_dir="/home/daytona/task-snapshots/ACTUAL_CAPTURE_INPUT_HASH"
 capture_stage="/home/daytona/capture-staging/assigned-task"
 mkdir -p "$capture_stage"
 python3 "$kit_dir/build_media_task.py" "$capture_stage/media-tasks" "$task_dir"
@@ -62,7 +77,17 @@ copied/cropped/re-encoded into the selected output.
 
 ## Run capture within the authorized budget
 
-Use the installed kit's Harbor/Daytona recipe. Its documented capture agent is
+The kit documents two execution paths. Prefer its **"Using capturekit without an
+agent"** path when the outer agent can write/run the capture script in the built task
+image using Docker inside this existing worker. Read the installed library API and
+image requirements; use the kit's native desktop/browser input during recording.
+This records the real app without spawning another Daytona worker or requiring a
+second copy of the Daytona API key. Preserve the reproduction script and logs in
+private staging so the same actions can be checked against the broken and fixed code.
+
+Alternatively, use the installed kit's Harbor/Daytona recipe when the assignment
+provides the required executor access and extra-worker budget. Its documented capture
+agent is
 `openai/gpt-6.1-sol` through Codex, with `web_search=disabled`, high reasoning, a pinned
 agent version, and two candidate rollouts. Match the installed README's exact flags
 and allocate setup/worker lifetime for its build and capture duration. Do not infer
@@ -79,8 +104,10 @@ harbor run -p "$capture_stage/media-tasks" -a codex \
 The `-e daytona` executor creates additional sandboxes. Its authentication and spending
 must be explicitly available for the job. The controller's Daytona API key is not
 automatically forwarded to the worker. Codex login and the capture executor's
-authentication are separate prerequisites. Do not silently forward credentials or
-switch executors to work around missing setup. Preserve work and report what is absent.
+authentication are separate prerequisites. Do not silently forward credentials.
+If choosing the separate-worker recipe,
+configure its access explicitly; otherwise use the supported direct-capture path
+when suitable. Report a blocker only if neither authorized path can run.
 
 A missing service/OS or failed real reproduction is an unsupported result, often
 recorded by the capture agent as `BLOCKED.md`. Keep that evidence; do not fabricate
@@ -88,13 +115,16 @@ frames or claim that a valid media file proves reproduction.
 
 ## Audit, inspect, and select
 
-Find each trial's `verifier/output/` under the capture jobs. Inspect its README and
+For Harbor capture jobs, find each trial's `verifier/output/`. Inspect its README and
 trajectory, `bug.*`, `fixed.*`, and `repro/`. Run the installed audit script against
 actual trial directories:
 
 ```bash
 python3 -I "$kit_dir/scripts/audit_cmds.py" /absolute/path/to/capture-trial
 ```
+
+For direct capture, retain equivalent command/reproduction logs and inspect both
+outputs; the Harbor trial audit command does not apply without a Harbor trial.
 
 Check that the bug capture uses the unfixed source, the fixed capture uses identical
 steps, and the repository is restored afterward. Reject copied reference media,

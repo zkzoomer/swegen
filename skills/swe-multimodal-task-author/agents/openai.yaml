@@ -1,4 +1,4 @@
 interface:
   display_name: "SWE Multimodal Task Author"
-  short_description: "Build and polish Helix tasks with a recorded inner agent"
+  short_description: "Local Helix authoring with persistent Daytona compute"
   default_prompt: "Use $swe-multimodal-task-author to download the assigned Helix task, coordinate its recorded authoring session, capture real broken/working media, validate judges and four probes, and return the task ZIP."
