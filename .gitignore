@@ -3,6 +3,8 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 
 # Proprietary tools are provisioned at runtime from outside the repository.
 /media-capture-kit/
@@ -11,6 +13,10 @@ node_modules/
 dist/
 outputs/
 traces/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
 
 # IDE specific files
 .vscode/
