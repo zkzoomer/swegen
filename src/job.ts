@@ -6,19 +6,21 @@ export type CliOptions = {
   dryRun: boolean
   authSmoke: boolean
   outputDir: string
+  taskDir: string
 }
 
 export function usage(): string {
   return [
     'Usage:',
-    '  npm run start -- --task-url <helix-url> --brief-file <assignment.md> [--output-dir <path>]',
+    '  npm run start -- --task-url <helix-url> --brief-file <assignment.md> [--task-dir <downloaded-folder>] [--output-dir <path>]',
     '  npm run start -- --task-url <helix-url> --brief-file <assignment.md> --dry-run',
     '  npm run start -- --auth-smoke',
     '',
     'The task already exists on Helix. Its downloaded template supplies metadata and IDs.',
     '--brief-file contains the assigned issue/scope, upstream references, and job budget.',
-    '--dry-run tests provisioning and artifact transfer without login or model execution.',
-    '--auth-smoke tests Codex login only; it does not require a task URL or build a task.',
+    '--task-dir reuses an already downloaded local task; otherwise Helix downloads it locally.',
+    '--dry-run tests the compute worker and transfer without either agent or pairing.',
+    '--auth-smoke makes one local Codex test call; it creates no Daytona worker.',
   ].join('\n')
 }
 
@@ -26,12 +28,14 @@ export function parseArgs(args: string[], defaultOutput = './outputs'): CliOptio
   let taskUrl = ''
   let briefFile = ''
   let outputDir = defaultOutput
+  let taskDir = ''
   let dryRun = false
   let authSmoke = false
   const flags = new Map<string, (value: string) => void>([
     ['--task-url', value => { taskUrl = value }],
     ['--brief-file', value => { briefFile = value }],
     ['--output-dir', value => { outputDir = value }],
+    ['--task-dir', value => { taskDir = value }],
   ])
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -57,7 +61,7 @@ export function parseArgs(args: string[], defaultOutput = './outputs'): CliOptio
     if (!briefFile.trim()) throw new Error('--brief-file is required')
   }
   if (!outputDir.trim()) throw new Error('--output-dir cannot be empty')
-  return { taskUrl, briefFile: briefFile ? path.resolve(briefFile) : '', dryRun, authSmoke, outputDir: path.resolve(outputDir) }
+  return { taskUrl, briefFile: briefFile ? path.resolve(briefFile) : '', dryRun, authSmoke, outputDir: path.resolve(outputDir), taskDir: taskDir ? path.resolve(taskDir) : '' }
 }
 
 export function renderJobText(template: string, options: CliOptions, brief: string): string {

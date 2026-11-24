@@ -34,10 +34,7 @@ async function fixture(t) {
     await fs.writeFile(file, contents)
   }
   await fs.chmod(path.join(kit, 'build_media_task.py'), 0o755)
-  const skill = path.join(project, 'skills', 'swe-multimodal-task-author')
-  await fs.mkdir(path.join(skill, 'references'), { recursive: true })
-  await fs.writeFile(path.join(skill, 'SKILL.md'), 'fixture skill\n')
-  await fs.writeFile(path.join(skill, 'references', 'media.md'), 'fixture instructions\n')
+  await fs.mkdir(project)
   return { root, project, kit }
 }
 
@@ -46,14 +43,12 @@ function mirrorAssets(assets, root) {
   return {
     ...assets,
     kitDir: mirror(assets.kitDir),
-    skillDir: mirror(assets.skillDir),
-    skillLink: mirror(assets.skillLink),
     manifestPath: mirror(assets.manifestPath),
     files: assets.files.map((file) => ({ ...file, destination: mirror(file.destination) })),
   }
 }
 
-// Execute the controller's actual installation/checksum/registration commands
+// Execute the controller's actual installation/checksum commands
 // against an isolated local filesystem. No SDK service or model is contacted.
 function sandboxFixture({ corrupt = false } = {}) {
   return {
@@ -85,7 +80,7 @@ test('unconfigured jobs do not read or provision runtime tools', async () => {
   assert.equal(await prepareRuntimeAssets('/nonexistent-project', '  '), undefined)
 })
 
-test('private files stay external; upload plan includes required files, notices, and skill only', async (t) => {
+test('private files stay external; upload plan includes required kit files and notices only', async (t) => {
   const { project, kit } = await fixture(t)
   const assets = await prepareRuntimeAssets(project, kit)
   assert.ok(assets)
@@ -93,8 +88,7 @@ test('private files stay external; upload plan includes required files, notices,
   assert.ok(names.includes('/opt/micro1/media-capture-kit/NOTICE'))
   assert.ok(names.includes('/opt/micro1/media-capture-kit/LICENSE.txt'))
   assert.ok(names.includes('/opt/micro1/media-capture-kit/capturekit/ghost_path.js'))
-  assert.ok(names.includes('/opt/swegen/skills/swe-multimodal-task-author/SKILL.md'))
-  assert.equal(names.length, 10)
+  assert.equal(names.length, 8)
   assert.ok(assets.files.every((file) => !file.contents.toString().includes('DO NOT TRANSFER')))
   await fs.writeFile(path.join(kit, 'build_media_task.py'), 'changed after preparation')
   assert.equal(assets.files.find((file) => file.destination.endsWith('/build_media_task.py')).contents.toString(), '# fixture builder\n')
@@ -120,13 +114,11 @@ test('incomplete kits and library symlinks fail before upload', async (t) => {
   await assert.rejects(prepareRuntimeAssets(project, kit), /regular file/)
 })
 
-test('runtime upload verifies bytes, preserves execution modes, and registers a reusable skill link', async (t) => {
+test('runtime upload verifies bytes, preserves execution modes, and can be repeated', async (t) => {
   const { project, kit, root } = await fixture(t)
   const assets = mirrorAssets(await prepareRuntimeAssets(project, kit), root)
   const sandbox = sandboxFixture()
   await provisionRuntimeAssets(sandbox, assets)
-  assert.equal(await fs.realpath(assets.skillLink), assets.skillDir)
-  assert.equal(await fs.readFile(path.join(assets.skillLink, 'SKILL.md'), 'utf8'), 'fixture skill\n')
   assert.equal((await fs.stat(path.join(assets.kitDir, 'build_media_task.py'))).mode & 0o777, 0o755)
   for (const file of assets.files) {
     assert.deepEqual(await fs.readFile(file.destination), file.contents)
@@ -135,22 +127,10 @@ test('runtime upload verifies bytes, preserves execution modes, and registers a 
   assert.equal(manifest.files.length, assets.files.length)
   assert.ok(manifest.files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)))
   await provisionRuntimeAssets(sandbox, assets)
-  assert.equal(await fs.realpath(assets.skillLink), assets.skillDir)
 })
 
-test('corrupted transfer fails checksum validation before skill discovery is registered', async (t) => {
+test('corrupted capture-kit transfer fails checksum validation', async (t) => {
   const { project, kit, root } = await fixture(t)
   const assets = mirrorAssets(await prepareRuntimeAssets(project, kit), root)
   await assert.rejects(provisionRuntimeAssets(sandboxFixture({ corrupt: true }), assets), /checksum mismatch/)
-  await assert.rejects(fs.lstat(assets.skillLink), /ENOENT/)
-})
-
-test('existing unrelated skill discovery content is preserved and reported', async (t) => {
-  const { project, kit, root } = await fixture(t)
-  const assets = mirrorAssets(await prepareRuntimeAssets(project, kit), root)
-  await fs.mkdir(assets.skillLink, { recursive: true })
-  const file = path.join(assets.skillLink, 'keep.txt')
-  await fs.writeFile(file, 'existing user content')
-  await assert.rejects(provisionRuntimeAssets(sandboxFixture(), assets), /discovery path already exists/)
-  assert.equal(await fs.readFile(file, 'utf8'), 'existing user content')
 })

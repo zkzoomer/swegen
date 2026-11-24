@@ -1,14 +1,11 @@
-.git
-.env
-media-capture-kit
-dist
-node_modules
-outputs
-*.log
-
-# The controller itself is not required by the worker image.
-src
-
-# Keep the Docker build context limited to the pinned in-sandbox agent and
-# worker helper files.
-knowledge
+# The compute image needs package manifests and its two installation helpers only.
+# Agent/controller code, private runtime assets, outputs and credentials stay local
+# or are uploaded through the SDK at runtime.
+**
+!Dockerfile.swegen
+!agent/
+!agent/package.json
+!agent/package-lock.json
+!docker/
+!docker/install_helix.sh
+!docker/upload_task_to_drive.py

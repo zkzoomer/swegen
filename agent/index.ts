@@ -3,66 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// This is the Node.js Codex agent used inside the Daytona sandbox.
-// This script is uploaded to the sandbox and invoked with PROMPT in the environment.
+// Local outer Codex agent. Helix launches the separate recorded inner session.
 
 import { Codex, Thread } from '@openai/codex-sdk'
-import { appendFile } from 'node:fs/promises'
-import type {
-  ThreadOptions,
-  ThreadItem,
-  TodoListItem,
-  CommandExecutionItem,
-  FileChangeItem,
-  McpToolCallItem,
-  WebSearchItem,
-  ErrorItem,
-  AgentMessageItem,
-  Usage,
-} from '@openai/codex-sdk'
+import type {ThreadOptions} from '@openai/codex-sdk'
+import logging from './logging.cjs'
 
-const FAILURE_EVENT_LOG =
-  process.env.CODEX_FAILURE_EVENT_LOG ?? '/home/daytona/workspace/codex-worker-failures.jsonl'
-
-async function persistFailureEvent(event: unknown): Promise<void> {
-  const record = JSON.stringify({ timestamp: new Date().toISOString(), event })
-  try {
-    await appendFile(FAILURE_EVENT_LOG, `${record}\n`, { encoding: 'utf8', mode: 0o600 })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(`Failed to persist Codex failure event to ${FAILURE_EVENT_LOG}: ${message}`)
-  }
-}
-
-// Convert output from the agent to a printable string
-function toolCallToString(item: ThreadItem): string {
-  if (item.type === 'command_execution') {
-    const commandItem = item as CommandExecutionItem
-    const status = commandItem.status === 'completed' && commandItem.exit_code === 0 ? '✓' : '✗'
-    return `🔨 ${status} Run: \`${commandItem.command}\``
-  } else if (item.type === 'file_change') {
-    const fileChangeItem = item as FileChangeItem
-    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-    return fileChangeItem.changes.map((change) => `📝 ${capitalize(change.kind)} ${change.path}`).join('\n')
-  } else if (item.type === 'mcp_tool_call') {
-    const mcpToolCallItem = item as McpToolCallItem
-    return `🔧 MCP Tool: ${mcpToolCallItem.tool}`
-  } else if (item.type === 'web_search') {
-    const webSearchItem = item as WebSearchItem
-    return `🌐 Web search: ${webSearchItem.query}`
-  } else if (item.type === 'todo_list') {
-    const todoListItem = item as TodoListItem
-    const todoList = todoListItem.items.map((todo) => `  - [${todo.completed ? 'x' : ' '}] ${todo.text}`).join('\n')
-    return `🗒️ To-do list:\n` + todoList
-  } else if (item.type === 'error') {
-    const errorItem = item as ErrorItem
-    return `❌ Error: ${errorItem.message}`
-  } else if (item.type === 'agent_message') {
-    const agentMessageItem = item as AgentMessageItem
-    return agentMessageItem.text
-  }
-  return ''
-}
+const redactor = logging.createRedactor(logging.secretValues())
+const log = logging.createWorkerLog(
+  process.env.SWEGEN_REVIEW_LOG_DIR ?? './outputs/outer-logs', redactor,
+)
+const report = (message: string) => console.log(log.text(message))
+const progress = logging.createProgressReporter(report)
 
 async function main(): Promise<void> {
   const prompt = process.env.PROMPT?.trim()
@@ -87,15 +39,16 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  // Authentication is established in this disposable sandbox with
-  // `codex login --device-auth` before the launcher starts. No API key is passed.
+  log.event({type: 'run.input', prompt})
+
+  // The outer uses the local login; the controller provisions rv probe authentication separately.
   const codex = new Codex()
 
   // Configure one autonomous task-building turn.
   const options: ThreadOptions = {
     model: process.env.CODEX_MODEL ?? 'gpt-5.6-sol',
     modelReasoningEffort: reasoningEffort as NonNullable<ThreadOptions['modelReasoningEffort']>,
-    workingDirectory: '/home/daytona/workspace',
+    workingDirectory: process.env.SWEGEN_OUTER_WORKSPACE ?? process.cwd(),
     skipGitRepoCheck: true,
     sandboxMode: 'danger-full-access',
     approvalPolicy: 'never',
@@ -108,28 +61,28 @@ async function main(): Promise<void> {
   const { events } = await thread.runStreamed(prompt)
   let failed = false
   for await (const event of events) {
-    if (event.type === 'item.completed') {
-      // Print each completed item
-      const output = toolCallToString(event.item).trim()
-      if (output) console.log(output)
-    } else if (event.type === 'turn.completed') {
-      // Print usage summary when the agent is finished
-      const { cached_input_tokens, input_tokens, output_tokens } = event.usage as Usage
-      console.log(`*Usage Summary: Cached: ${cached_input_tokens}, Input: ${input_tokens}, Output: ${output_tokens}*`)
+    const diagnostic = log.event(event)
+    progress(event)
+    if (event.type === 'item.completed' && event.item.type === 'command_execution' &&
+        (event.item.status === 'failed' || (event.item.exit_code != null && event.item.exit_code !== 0))) {
+      report(`Command failed (exit ${event.item.exit_code ?? 'unknown'})` + (diagnostic ? `; details: ${diagnostic}` : ''))
+    } else if (diagnostic) report(`Tool failed; details: ${diagnostic}`)
+    if (event.type === 'turn.completed') {
+      report('Outer agent finished.')
     } else if (event.type === 'turn.failed') {
       failed = true
-      console.error(`Codex turn failed: ${event.error.message}`)
-      await persistFailureEvent(event)
+      report(`Codex turn failed: ${event.error.message}`)
     } else if (event.type === 'error') {
       failed = true
-      console.error(`Codex stream error: ${event.message}`)
-      await persistFailureEvent(event)
+      report(`Codex stream error: ${event.message}`)
     }
   }
+  log.event({type: 'run.finished', failed})
   if (failed) throw new Error('Codex worker reported a failed turn; inspect retained evidence.')
 }
 
 main().catch((err) => {
-  console.error('Agent error:', err)
-  process.exit(1)
+  log.event({type: 'run.error', message: String(err), stack: err instanceof Error ? err.stack : undefined})
+  console.error(log.text(`Agent error: ${String(err)}`))
+  process.exitCode = 1
 })

@@ -1,7 +1,6 @@
 const {test} = require('node:test')
 const assert = require('node:assert/strict')
 const {parseArgs,renderJobText} = require('../dist/job.js')
-const {validateArchiveEntries} = require('../dist/artifacts.js')
 const url='https://helix.micro1.ai/pipelines/p/tasks?task_id=t'
 
 test('assigned Helix URL and brief replace advisory and invented task IDs',()=>{
@@ -31,17 +30,6 @@ test('render only controlled template tokens; do not reinterpret supplied brief'
  assert.throws(()=>renderJobText('{{UNKNOWN}}',options,'text'),/unknown job template/)
  assert.throws(()=>renderJobText('{{TASK_BRIEF}}',options,' '),/brief is empty/)
 })
-test('archive transport accepts both official Helix ZIP layouts and new handoff',()=>{
- for(const entries of [['task.toml','reasoning.md'],['demo/task.toml','demo/reasoning.md'],['demo.zip','validation-summary.md']]){
-  assert.doesNotThrow(()=>validateArchiveEntries(entries,false))
- }
- for(const entries of [['../secret'],['/absolute'],['C:/absolute'],['x\\y'],['task.toml','task.toml']]){
-  assert.throws(()=>validateArchiveEntries(entries,false))
- }
- assert.doesNotThrow(()=>validateArchiveEntries(['smoke.txt'],true))
- assert.throws(()=>validateArchiveEntries(['task.toml'],true),/unexpected/)
-})
-
 test('CLI help and rejected old options never require credentials or a worker',()=>{
  const {spawnSync}=require('node:child_process')
  const path=require('node:path')

@@ -120,7 +120,7 @@ COPY agent/package.json agent/package-lock.json ./
 RUN npm ci --omit=dev \
     && ln -s /opt/swegen-agent/node_modules/.bin/codex /usr/local/bin/codex \
     && codex --version
-COPY agent/index.ts ./index.ts
+# Both authors run locally; worker helpers upload at runtime.
 
 COPY docker/upload_task_to_drive.py /usr/local/libexec/upload_task_to_drive.py
 RUN chmod 0755 /usr/local/libexec/upload_task_to_drive.py \

@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import type { Sandbox } from '@daytona/sdk'
+import { quoteShell } from './utils'
 
 export const REMOTE_MEDIA_CAPTURE_KIT_DIR = '/opt/micro1/media-capture-kit'
-export const REMOTE_MULTIMODAL_SKILL_DIR = '/opt/swegen/skills/swe-multimodal-task-author'
 
 type RuntimeFile = {
   destination: string
@@ -15,8 +15,6 @@ type RuntimeFile = {
 
 export type RuntimeAssets = {
   kitDir: string
-  skillDir: string
-  skillLink: string
   manifestPath: string
   files: RuntimeFile[]
 }
@@ -36,10 +34,6 @@ const SKIP_DIRECTORIES = new Set([
 function isWithin(parent: string, child: string): boolean {
   const relative = path.relative(parent, child)
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
-}
-
-function quoteShell(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`
 }
 
 async function addFile(
@@ -119,30 +113,24 @@ export async function prepareRuntimeAssets(
     }
   }
 
-  const skillDir = path.join(project, 'skills', 'swe-multimodal-task-author')
-  await fs.access(path.join(skillDir, 'SKILL.md'))
-  await addDirectory(skillDir, '', REMOTE_MULTIMODAL_SKILL_DIR, files)
   return {
     kitDir: REMOTE_MEDIA_CAPTURE_KIT_DIR,
-    skillDir: REMOTE_MULTIMODAL_SKILL_DIR,
-    skillLink: '/home/daytona/workspace/.agents/skills/swe-multimodal-task-author',
     manifestPath: '/opt/swegen/runtime-assets-manifest.json',
     files,
   }
 }
 
-const VERIFY_AND_REGISTER = String.raw`
-import hashlib, json, os, stat, sys
+const VERIFY_ASSETS = String.raw`
+import hashlib, json, stat, sys
 from pathlib import Path
 
 manifest = json.loads(Path(sys.argv[1]).read_text())
-roots = [Path(manifest["kit_dir"]), Path(manifest["skill_dir"])]
-for root in roots:
-    if not root.is_dir() or root.is_symlink():
-        raise RuntimeError("invalid runtime asset root: " + str(root))
+root = Path(manifest["kit_dir"])
+if not root.is_dir() or root.is_symlink():
+    raise RuntimeError("invalid runtime asset root: " + str(root))
 for entry in manifest["files"]:
     file = Path(entry["path"])
-    if not any(file.is_relative_to(root) and file.resolve().is_relative_to(root.resolve()) for root in roots):
+    if not (file.is_relative_to(root) and file.resolve().is_relative_to(root.resolve())):
         raise RuntimeError("runtime asset path escapes installation")
     if not stat.S_ISREG(file.lstat().st_mode):
         raise RuntimeError("runtime asset is not a regular file: " + str(file))
@@ -151,19 +139,7 @@ for entry in manifest["files"]:
         raise RuntimeError("runtime asset checksum mismatch: " + str(file))
     file.chmod(entry["mode"])
 
-link = Path(manifest["skill_link"])
-target = Path(manifest["skill_dir"])
-link.parent.mkdir(parents=True, exist_ok=True)
-if link.is_symlink():
-    if link.resolve() != target.resolve():
-        raise RuntimeError("skill discovery link already points elsewhere")
-elif link.exists():
-    raise RuntimeError("skill discovery path already exists; preserve it")
-else:
-    link.symlink_to(target, target_is_directory=True)
-if not (link / "SKILL.md").is_file():
-    raise RuntimeError("installed multimodal skill has no entrypoint")
-print("Verified runtime assets and registered SWE Multimodal skill")
+print("Verified runtime capture kit")
 `
 
 /** Upload private tools only into this running sandbox, never into image layers. */
@@ -172,7 +148,7 @@ export async function provisionRuntimeAssets(
   assets: RuntimeAssets,
 ): Promise<void> {
   const directories = new Set([
-    assets.kitDir, assets.skillDir, path.posix.dirname(assets.manifestPath),
+    assets.kitDir, path.posix.dirname(assets.manifestPath),
     ...assets.files.map((file) => path.posix.dirname(file.destination)),
   ])
   const prepared = await sandbox.process.executeCommand(
@@ -183,8 +159,6 @@ export async function provisionRuntimeAssets(
   const manifest = {
     version: 1,
     kit_dir: assets.kitDir,
-    skill_dir: assets.skillDir,
-    skill_link: assets.skillLink,
     files: assets.files.map((file) => ({
       path: file.destination,
       size: file.contents.length,
@@ -197,7 +171,7 @@ export async function provisionRuntimeAssets(
     { source: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`), destination: assets.manifestPath },
   ])
   const checked = await sandbox.process.executeCommand(
-    `python3 - ${quoteShell(assets.manifestPath)} <<'SWEGEN_RUNTIME_VERIFY'\n${VERIFY_AND_REGISTER}\nSWEGEN_RUNTIME_VERIFY`,
+    `python3 - ${quoteShell(assets.manifestPath)} <<'SWEGEN_RUNTIME_VERIFY'\n${VERIFY_ASSETS}\nSWEGEN_RUNTIME_VERIFY`,
     undefined, undefined, 60,
   )
   if (checked.exitCode !== 0) throw new Error(`runtime asset verification failed: ${checked.result}`)

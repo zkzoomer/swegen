@@ -8,9 +8,12 @@
 Helix is installed from its versioned public release with checksum/version checks.
 Change `HELIX_VERSION` deliberately when upgrading. Neither target contains Helix
 pairing, Codex login, provider credentials, or micro1's proprietary capture kit.
-The controller sends the kit and multimodal skill to a private running worker.
-Rebuild this image for the multimodal migration: the agent runtime path is now
-`/opt/swegen-agent`, so an older snapshot with the previous path is insufficient.
+The controller sends the kit to a private compute worker. Both authoring agents now
+run locally. Codex runs on the worker for rv probes; Helix is retained for compatibility
+and needs no worker pairing.
+The earlier multimodal migration required a rebuild: the agent runtime path is now
+`/opt/swegen-agent`, so snapshots with the previous path are insufficient. The local-agent refactor itself
+does not require another rebuild; support scripts upload at runtime.
 
 ## Build locally
 
@@ -72,9 +75,8 @@ Set the exact ready snapshot name in the controller's ignored `.env`:
 DAYTONA_SNAPSHOT=swegen-multimodal-v1
 ```
 
-This uploads the image. The multimodal launcher pairs Helix separately in each
-disposable worker, with the expected account set in the job configuration. The
-outer-agent launch contract and remaining live-validation requirements are in
+This uploads the image. The launcher uses local Helix and one persistent compute
+worker. The launch contract and validation requirements are in
 [worker-launch.md](../skills/swe-multimodal-task-author/references/worker-launch.md).
 A local secret-backed build followed by `snapshot push` is the documented path here;
 do not replace it with a remote Dockerfile build that lacks the private build secret.
@@ -83,21 +85,16 @@ Official references: [snapshots](https://www.daytona.io/docs/en/snapshots/),
 
 ## Runtime readiness
 
-Before a Helix task job, pair the worker through the supported runtime approval flow,
-then download the assigned task. Pairing the laptop does not pair the worker:
+Pair Helix and sign into Codex on the operator's machine, then check `helix status`,
+`helix doctor`, `codex login status` and local Docker. Helix download, recorded
+authoring, trace saving and the final official oracle all run locally.
 
-```bash
-helix setup --root /home/daytona/helix-tasks
-helix status
-helix doctor
-```
-
-Authenticate Codex under the identity used by both outer and inner processes. Configure
-judge/probe providers through supported runtime authentication. A selected `rv` mode
-and model must match the installed realm; old provider overrides are not universal.
-Keep all credentials out of snapshots, task ZIPs, prompts, and captured media. Never
-snapshot a paired/authenticated worker for reuse; retire runtime credentials with it.
-Harbor capture's executor credentials are a separate prerequisite.
+The controller uploads the private capture kit and execution helpers to the worker.
+It provisions rv's selected judge credentials and the Codex login needed for probes,
+then validates them before agents start. See [the setup guide](../README.md#setup).
+Keep credentials out of snapshots, task ZIPs, prompts and media. Do not snapshot an
+authenticated worker; successful workers are deleted after evidence transfer and
+failed workers have their probe login removed before recovery retention.
 
 The image includes `upload-task-to-drive` for jobs that explicitly use it. Supply a
 restricted Google service-account credential at runtime and share only the destination
