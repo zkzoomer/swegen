@@ -1,0 +1,4 @@
+interface:
+  display_name: "SWE Multimodal Task Selection"
+  short_description: "Screen task ideas using evidence from past candidates"
+  default_prompt: "Use $swe-multimodal-task-selection to assess candidate tasks using the past-task casebook and identify selection risks before authoring."
