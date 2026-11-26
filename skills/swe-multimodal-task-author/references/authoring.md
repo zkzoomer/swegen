@@ -33,8 +33,10 @@ audit outside the inner handoff. Never edit Helix's guidance, journals or upload
 
 ## Instruction: shared fair lower-bound version
 
-Use this shared bug-fix pattern, based on the brief gold examples below. The text is
-simple across tasks; filenames and any necessary symptom phrase reflect actual media:
+Use this bug-fix pattern when both selected attachments have a legitimate role and
+provenance under [media.md](media.md). A broken-only report can also be fair when the
+brief, media and existing interfaces establish the required outcome. Filenames and
+any necessary symptom phrase must reflect the actual selected media:
 
 ```markdown
 Can you fix the issue shown here?
@@ -52,10 +54,10 @@ such as "The labels overlap." Avoid diagnosing why. Labeling attachment roles is
 part of a fair request, not an optional hint to withhold.
 
 This is a common starting format, not identical bytes or a universal "fix this"
-contract for every category. Feature/refactor tasks still need their required public
-API and contract. Pick the shortest **fair** prompt, not the vaguest possible wording.
-Use the four-rollout screening/calibration rules in
-[orchestration.md](orchestration.md); no wording guarantees a pass count.
+contract for every category. State the required public contract, including any new
+API the verifier calls by name. Pick the shortest **fair** prompt, not the vaguest
+possible wording. Follow the separate weak-model and Frontier criteria in
+[review-and-calibration.md](review-and-calibration.md); no wording guarantees a pass count.
 
 
 Use plain words and short sentences. For bug fixes, aim for one to three sentences
@@ -63,16 +65,24 @@ plus attachment references. Features/refactors may need more text to state their
 public contract; keep only necessary detail. Never turn the prompt into the hidden
 test plan, a diagnosis, or a compressed implementation checklist.
 
+Assess what uncertainty each sentence removes. "The last search is fine" can identify
+a negative control; "like typing over the selection" supplies a comparison experiment.
+An expected outcome is not automatically an implementation hint, but spelling it out
+can make the media redundant. Identify what material fact the media still supplies.
+Do not hide required behavior to lower scores or infer a hint's effect from its length.
+
 Reference every submitted attachment at its runtime `/media/...` path, with no missing
 or nonexistent files. Use `![recording](/media/recording.mp4)` for recordings and
 equivalent Markdown image syntax for screenshots; reference documents clearly.
 
 Apply the selected category reference. Bug-fix/performance prompts must not name the
 root cause, buggy implementation path/function, upstream PR/commit, or repair.
-Feature/refactor prompts must disclose required public names, import paths, signatures,
-and contracts; features include required constants. No hidden-test paths or author-only
-artifacts belong in the prompt. In all categories the media must still supply a material
-fact that the written text and starting repository leave unresolved.
+For feature/refactor tasks, disclose new public names, imports, signatures, defaults
+and constants that the graded interface requires. If the existing app/commands define
+that interface, test them and allow different internal APIs rather than inventing a
+required callback name. No hidden-test paths or author-only artifacts belong in the
+prompt. In all categories the media must still supply a material fact that the written
+text and starting repository leave unresolved.
 
 Real golden excerpts:
 
@@ -88,8 +98,10 @@ refactor specifications.
 
 ## Reasoning
 
-Usually one short paragraph per heading is enough. Explain the cause and final change
-in reviewer-facing prose; these facts must remain outside the solver image.
+Usually one short paragraph per heading is enough. Explain the finished task's cause,
+repair, media contribution and verified coverage. Keep revision history, calibration
+bookkeeping and statements about what a revision does not claim in the external
+validation summary. Reviewer-facing reasoning must remain outside the solver image.
 
 ```markdown
 # What this task requires
@@ -115,7 +127,7 @@ Summarize F2P/P2P coverage, actual results, and alternative/negative-control evi
 
 The required filename is `reasoning.md`, not `reasoning.txt`. Draft known facts early
 for the first judge batch and mark unrun checks accurately. The outer agent finalizes
-it after technical/QC work and trace saving. Save the final text with outer-save-text before the final local oracle.
+it after technical/QC work. Save the final text with outer-save-text before the final local oracle.
 Run the affected reasoning judgment afterward. A requested `.txt` copy is an optional
 external handoff companion; it never replaces the required Markdown file.
 
@@ -139,8 +151,9 @@ as a permanent exemption.
 
 ## Handoff content
 
-Provide the assigned goal and scope, exact text to save, staged media paths and roles,
-repository/base information, implementation request, and validation requirements.
+Provide the assigned goal and scope, supplied task text for context, staged media
+paths and roles, repository/base information, implementation request, and validation
+requirements. The outer saves the prose; the inner saves technical files.
 Keep this outer skill and author notes outside the managed task. Resume the same task
 for revisions; do not ask the inner agent to guess the final reasoning from old results.
 

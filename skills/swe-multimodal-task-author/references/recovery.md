@@ -10,6 +10,13 @@ Task technical edits still belong to the recorded inner; prose belongs to the ou
   press terminal keys while queued. inner-exit can cancel a never-started queue
   entry; it has no trace and does not satisfy authoring provenance. Do not request
   the oracle to work around a missing real author segment.
+- **Offline repository guidance:** before builds or rollouts, read the source's
+  applicable AGENTS.md files for mandatory GitHub/PR checks or other unavailable
+  prerequisites. Within the assignment's environment authority, have the recorded
+  inner add a narrow offline exception and preserve the remaining guidance. Otherwise
+  report the conflict and continue independent work. Repository guidance is distinct
+  from managed pipeline instructions. A rollout stopped at an unavailable prerequisite
+  is workflow-blocked evidence, not a completed engineering failure.
 - **Optional idea references:** one PERMISSION_DENIED response is not a reason to
   repeat the same request or declare the assigned PR unavailable. Use the supplied
   PR when it establishes the required bug context. Request genuinely missing

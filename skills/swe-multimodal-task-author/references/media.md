@@ -28,16 +28,19 @@ settings to exaggerate the failure, or invent reporter-provided expected output.
 4. For the kit's bug/fix procedure, inspect both `bug.*` and `fixed.*`, audit commands
    and `repro/run.sh`, and verify the same steps reproduce the symptom only before
    the fix. A reward of 1 checks basic artifacts, not whether media shows the bug.
-5. For this user's workflow, submit selected fresh **broken and working** captures
-   with clear attachment roles, using the same input/actions. The working capture may
-   show the reference fix's visible result; it must not expose implementation, code,
-   logs, author commentary, or unrelated behavior. Keep `repro/`, reference patches,
-   audit output, and tooling outside the final task/solver image. The installed kit's
-   own final-output recipe prefers bug-only media; this task-media policy explicitly
-   chooses a paired comparison. Do not alter or misquote the proprietary kit.
+5. Select solver attachments separately from private verification. Paired broken/
+   working media is this workflow's default when both have a credible user-facing
+   role; the assignment may choose broken-only media if the combined brief, media
+   and existing interfaces still establish the outcome. Before supplying a working
+   target, record who could have it and why, such as a supplied design, genuine
+   reference release or authorized reference application. Rendering the gold alone
+   does not establish that provenance. Keep code, logs, commentary, `repro/`, patches,
+   audit output and tooling outside solver media. The kit's final-output recipe
+   prefers bug-only media; do not alter or misquote it or treat either recipe as
+   waiving the pipeline's realism requirement.
 6. Give chosen attachments to the inner session to copy into `environment/media/`.
-   The Dockerfile maps these to `/media`, outside `/app`. Have it save the outer
-   prompt using those runtime paths.
+   The Dockerfile maps these to `/media`, outside `/app`. The outer saves its prompt
+   with outer-save-text using those runtime paths.
 
 Do not copy/crop/re-encode upstream issue media and call it a fresh capture. The kit
 allows reference inspection but requires new output from the actual starting source.
@@ -49,7 +52,7 @@ can create artificial glitches. Follow its installed rules for timing and appear
 
 | Category | Capture source | Required decision |
 | --- | --- | --- |
-| Bug fix | Assigned source at its buggy commit; the real reported sequence/output | Verify bug before and absence after the fix; select fresh broken/working media for the solver. |
+| Bug fix | Assigned source at its buggy commit; the real reported sequence/output | Verify bug before and absence after the fix privately; select fresh solver media with a credible role and enough information to establish the outcome. |
 | Feature | A genuine supplied design/specification or authorized reference application | The media must supply a requirement absent from text/code. Do not invent a design or manufacture an authoritative target from the gold implementation. |
 | Refactor | A real structural diagram/document/specification that materially constrains the change | An app screenshot alone does not define an internal restructuring. Report a task with no meaningful media input as unsuitable. |
 | Performance | Real workload/state/interaction exposing the problem | Pair author evidence with reliable measurements and correctness. Do not artificially slow the program or grade only apparent video speed. |
@@ -60,11 +63,12 @@ unavailable services, failed reproduction, or no meaningful visual requirement a
 explicit unsupported outcomes. Preserve evidence and report what input/capability is
 missing; do not redefine the task to manufacture a successful capture.
 
-A real prior-release reference, supplied design, or selected working bug-fix capture
-can be solver media when its role is honest and it fairly specifies the outcome.
-Paired captures are explicitly requested for this workflow. A gold-derived bug-fix
-comparison is output evidence, not an independent feature design: do not fabricate a
-feature specification or pretend the capture came from a user or an earlier release.
+A working capture can be solver media when its reference basis exists independently
+of our chosen repair and its role is honest. A new capture of a genuine release or
+authorized reference program is acceptable evidence of that basis; an author-created
+expected result is not made authoritative by labeling it "working." Keep gold-derived
+comparisons private when no legitimate solver-facing reference exists. Never present
+such output as a supplied feature design or claim provenance it does not have.
 
 ## Inspect and package
 

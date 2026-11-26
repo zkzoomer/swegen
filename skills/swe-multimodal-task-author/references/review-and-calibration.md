@@ -22,11 +22,27 @@ commands ran. A protected-test modification flag or absent stderr is not a verdi
 | True fail | A normally executed production repair is wrong/incomplete for a fair in-scope requirement. |
 | False fail | A correct reasonable repair is rejected through unfair requirements, ambiguity, or grading/setup defects. |
 | Infrastructure failure | Execution/provider/environment failure prevents a completion judgment. |
+| Unresolved | Evidence is insufficient to settle the requirement or implementation; retain the question. |
 
 Judge contract and implementation before classifying. A 5/9 score does not prove the
 other four requirements were fair. One passing run proves solvability, not universal
 fairness. A correct diagnosis without media can expose a necessity problem even if
 the solver's implementation fails.
+
+For each decisive failure, record the required behavior, where the solver could
+discover it, the patch's behavior and the assertion that distinguishes them. The
+brief, media and existing public behavior establish the solver-facing contract;
+an author-only PR or hidden test alone does not. Requirements may be inferred from
+those interfaces without every input variant being transcribed into the prompt.
+
+An agent's hesitation is not proof of an unfair requirement. A deliberate change to
+established behavior can be a true failure even when the agent calls it preservation.
+Conversely, rejecting an outcome that the task never established is not engineering
+difficulty. Separate that policy question from any independently demonstrated bug.
+Count shared causes: six replacement assertions can expose one wrong behavior.
+Weak-model successes support discoverability; they do not prove all other verdicts
+fair. If reclassifying a run, retain the previous verdict and the new fact or reasoning
+that changed it. Do not change verdicts merely to reach a pass band.
 
 ## Triage probes before edits
 
@@ -51,21 +67,25 @@ unresolved evidence, not automatic failure or permission to invent a pass.
 
 ## Fair lower-bound screen and calibration
 
-Start with the shared brief request and clearly labeled broken/working media in
-[authoring.md](authoring.md). Keep this initial version and its evidence. The user
-wants the shortest fair report as a difficulty screen, not misleading text or an
-implementation hint. Four valid authorized rollouts give this local screening rule:
+Start with the shortest fair report and selected, clearly labeled media under
+[authoring.md](authoring.md) and [media.md](media.md). Keep that version and its evidence.
+Follow the live pipeline's model identities and trial counts. The captured ladder
+starts with three weak-model runs, then four Frontier runs; historical platform
+batches may contain more weak attempts. Record the actual configured stage, not a
+model tier guessed from block numbers or redacted aliases.
 
-- 0/4 true passes: potentially promising difficulty, but final solvability is unproven.
-- 1–2/4 true passes: candidate target met if fairness, necessity, and verdicts hold.
-- 3–4/4 true passes: above this job's desired lower-bound difficulty screen; flag it.
+| Stage | Difficulty criterion |
+| --- | --- |
+| Weak-model screen | At most one true pass across the configured weak runs. More than one calls for fair hardening or a harder candidate. Zero can advance to Frontier. |
+| Frontier calibration | One or two true passes out of four. Zero needs investigation and fair clarification; more than two calls for fair hardening or a harder candidate. |
 
-These are this job's screening preferences, not a replacement for the live pipeline.
-Do not count infrastructure failures, false fails, or false passes toward the band.
-After a promising low result, add only a natural clarification that addresses actual
-confusion, preserving media necessity, to aim for 1–2/4 within the authorized budget.
-No wording ensures that exact result. Stop rather than cycle indefinitely or obscure
-the prompt to lower scores. Probes/oracle do not supply the rollout pass rate.
+Do not count infrastructure failures, false fails or false passes as difficulty
+evidence. When Frontier has zero passes, address actual confusion with a natural
+clarification where needed, preserving media necessity and the agreed contract.
+Four attempts are a small sample; changing both wording and model tier cannot
+isolate a sentence's effect. No wording ensures an exact pass count. Stop rather
+than cycle indefinitely or obscure the prompt to lower scores. Probes/oracle do
+not supply the rollout pass rate.
 
 ## Calibrate by what agents actually missed
 
@@ -78,7 +98,7 @@ the prompt to lower scores. Probes/oracle do not supply the rollout pass rate.
   repeating the diagnosis in the prompt.
 - Unrelated hidden requirements: remove them or settle scope with the owner.
 
-The outer agent updates the prompt; the inner saves it. Keep wording brief, natural,
+The outer agent writes and saves the prompt with outer-save-text. Keep wording brief, natural,
 and appropriate to the category. New hints may introduce ambiguity or destroy media
 necessity; review actual interpretation and rerun the relevant ablation. Do not
 silently simplify/expand the supplied task or select verdicts to hit a pass band.

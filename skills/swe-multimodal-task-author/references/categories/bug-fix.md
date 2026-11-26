@@ -7,9 +7,10 @@ cause or coupled behavior, rather than every adjacent change in an upstream PR.
   location, repair, and upstream identifiers undisclosed. Describe only what is needed
   for a fair request; the media must still supply a material state/sequence/output fact.
 - **Media:** record real starting-source behavior with the installed capture kit.
-  Inspect matching broken/working captures and give the solver both with clear roles
-  under this user's media policy. Ship only output, never reference code or capture
-  tooling. Do not reuse upstream bytes or stage a contrived demonstration.
+  Inspect matching broken/working captures privately, then select solver attachments
+  under media.md's role, provenance and fairness rules. Ship only selected output,
+  never reference code or capture tooling. Do not reuse upstream bytes or stage a
+  contrived demonstration.
 - **Tests:** every F2P fails on the starter for the intended reason. Exercise supported
   representative variants of the same public contract, not private implementation
   details. Preserve controlled/rejected transitions and unaffected behavior where

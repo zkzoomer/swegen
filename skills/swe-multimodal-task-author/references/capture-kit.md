@@ -132,20 +132,23 @@ fake interfaces, overlays, exaggerated settings, and input-driver artifacts. Use
 kit's native input channel while recording. Open actual frames in temporal order;
 the kit reward checks basic artifacts, not visual correctness or media necessity.
 
-Choose fresh `bug.png`/`bug.mp4` and matched `fixed.png`/`fixed.mp4` showing the
-assigned broken/working behavior. This user requests both as clearly labeled task
-media, overriding the kit recipe's bug-only final selection. Only the selected visual
-outputs are eligible; keep the audit output, patches, and reproduction script in
-persistent private staging. Rename selected files to neutral broken/working names
-if useful, and use those exact `/media/...` paths in the prompt.
+Inspect fresh `bug.png`/`bug.mp4` and matched `fixed.png`/`fixed.mp4` to verify the
+assigned behavior. Select solver attachments using [media.md](media.md): private
+before/after evidence does not automatically justify supplying a working target.
+Pair solver captures when their roles and reference provenance are legitimate and
+the assignment calls for both; otherwise retain unselected comparisons privately.
+The kit recipe prefers bug-only final selection. Keep audit output, patches and
+the reproduction script in persistent private staging. Use neutral attachment names
+and their exact `/media/...` paths in the prompt.
 For feature/refactor/performance tasks, first apply the category-specific evidence
 decision in [media.md](media.md); the bug-capture recipe is not proof those branches
 are supported or that an independent specification exists.
 
 ## Inner-session handoff and cleanup
 
-Give the inner Helix session the chosen media path, attachment role, and exact prompt
-references to save. It places media in `environment/media/`, mapped to `/media/...`.
+Give the inner Helix session the chosen media paths, attachment roles and supplied
+prompt references for context. It places media in `environment/media/`, mapped to
+`/media/...`; the outer saves the prompt with outer-save-text.
 Keep the kit's source/documentation, capture task/image, unselected comparisons,
 reference patch, and reproduction/audit files outside the final task and solver
 environment. Selected broken/working visual outputs are task media, not tooling.

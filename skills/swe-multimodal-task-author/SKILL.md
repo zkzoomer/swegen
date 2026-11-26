@@ -24,14 +24,16 @@ commands. Follow
 [orchestration.md](references/orchestration.md):
 
 1. **Understand the issue.** Inspect the locally downloaded task, its active template and
-   assigned issue/PR, and settle one observable contract. Run the cheap compatibility
-   preflight before heavy setup; see [local-bridge.md](references/local-bridge.md).
+   assigned issue/PR, and settle one observable contract. Check repository guidance
+   for offline workflow conflicts and run the cheap compatibility preflight before
+   heavy setup; see [local-bridge.md](references/local-bridge.md).
    The outer owns operational recovery, approval review and verifier-scope decisions;
    use [recovery.md](references/recovery.md) when a command or check fails.
 2. **Capture real evidence.** Use the external `media-capture-kit` in private staging.
-   For bug fixes, inspect matching broken and working recordings and give the solver
-   both with clear roles. Read [media.md](references/media.md) and
-   [capture-kit.md](references/capture-kit.md). Other categories need genuine source
+   For bug fixes, verify matching broken and working behavior privately. Select solver
+   attachments with clear roles and credible provenance. Read
+   [media.md](references/media.md) and [capture-kit.md](references/capture-kit.md).
+   Other categories need genuine source
    material and a supported capture procedure.
 3. **Write the initial prompt.** Use the shared short request and `/media/...` links
    in [authoring.md](references/authoring.md), adding only what fairness requires.
@@ -77,13 +79,16 @@ Select [bug fix](references/categories/bug-fix.md),
 [refactor](references/categories/refactor.md), or
 [performance](references/categories/performance.md).
 Captured classification precedence is `feature > performance > bug_fix > refactor`;
-use the current template's subcategories. Features/refactors need explicit public APIs.
+use the current template's subcategories. Disclose any public names/signatures the
+graded contract requires; a task graded through an existing UI need not prescribe a
+new implementation API.
 
 Use [review-and-calibration.md](references/review-and-calibration.md) when rollouts
-are included. This job's screening target is at most two true passes out of four,
-then fair clarification toward one or two. Zero passes is promising difficulty evidence,
-not completed calibration. No wording guarantees a score; preserve media necessity.
-The live Helix ladder and authorized run budget govern actual evaluations.
+are included. The weak-model screen permits at most one true pass across its configured
+runs; the Frontier target is one or two true passes out of four. Zero weak passes can
+advance to Frontier; zero Frontier passes needs investigation before calibration is
+complete. No wording guarantees a score; preserve media necessity. The live Helix
+ladder, model identities, trial counts and authorized budget govern actual evaluations.
 
 ## Invariants and completion
 

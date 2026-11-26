@@ -48,15 +48,15 @@ helix task author
 ```
 
 This opens interactive Codex; it is not an ordered form. Supply the task goal,
-scope/exclusions, text to save, media paths, technical build request, and validation
-criteria. The inner session makes technical task-file changes. It may flag factual
+scope/exclusions, supplied task text, media paths, technical build request and
+validation criteria. The inner session makes technical task-file changes. It may flag factual
 gaps in supplied text; the outer revises and saves its prose with outer-save-text.
 
 Prepare capture prerequisites in an outer disposable scaffold first. If a preliminary
 recorded session is necessary, save it and record the ordering exception. Resume for
-media/text integration and repairs. Exit Codex and wait for Helix's saved-session
-confirmation before closing the terminal, interrupting again, or launching separate
-writers. Recover unfinished trace uploads from the task folder with:
+technical media integration and repairs; the outer saves both prose files. Exit
+Codex and wait for Helix's saved-session confirmation before closing the terminal,
+interrupting again, or launching separate writers. Recover unfinished trace uploads from the task folder with:
 
 ```bash
 helix task author --upload-only
@@ -104,9 +104,10 @@ returns the ZIP plus a brief validation summary. The controller creates the loca
 execution evidence downloads separately before worker cleanup. Report unsaved provenance or exhausted/unresolved checks honestly and label
 an incomplete handoff. A ZIP alone does not prove traces were saved or checks passed.
 
-Final `reasoning.md` is written by the outer after its review and saved through a
-brief resumed author session if necessary. Its affected judge must be current. A
-requested `reasoning.txt` is a companion outside the task, not the required filename.
+Final `reasoning.md` is written by the outer after its review and saved with
+outer-save-text; prose saving alone needs no resumed author session. Its affected
+judge must be current. A requested `reasoning.txt` is a companion outside the task,
+not the required filename.
 
 ## Optional upload and platform gates
 

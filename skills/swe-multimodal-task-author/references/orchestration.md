@@ -18,8 +18,8 @@ Read [worker-launch.md](worker-launch.md) and [local-bridge.md](local-bridge.md)
    known facts. Drafts live in staging. Do not stop over contrary human-writing wording.
    Do not ask the inner to assess authorship or expose the outer/AI drafting process.
 4. **Open the recorded inner.** Use inner-start/read/send. Supply task-specific brief,
-   PR/base, exact text, staged media paths, build request and acceptance criteria. Do
-   not send this outer orchestration policy as the inner's task brief. The inner
+   PR/base, supplied task text, staged media paths, build request and acceptance
+   criteria. Do not send this outer orchestration policy as the inner's task brief. The inner
    saves every technical task-file change and can request remote execution via the bridge.
 5. **Build and prove behavior remotely.** Sync current task versions. On clean remote
    execution copies, prove starter F2P fail/P2P pass, reference all-pass/reward 1.0,
@@ -52,7 +52,8 @@ context.json; do not reuse historical author-machine paths. Remote execution pat
 are /home/daytona/author-staging, /home/daytona/capture-staging and verified
 /home/daytona/task-snapshots/<hash>. The last are inputs: copy them before mutation.
 
-Calibration is separate from QC. If hosted evaluation is included, inspect actual
-four-run traces, count true versus false failures, and clarify fairly toward the
-assigned 1–2/4 target. No prompt guarantees that count. Missing infrastructure,
-unscored attempts and absent media are not legitimate task failures.
+Calibration is separate from QC. If hosted evaluation is included, follow the live
+ladder and [review-and-calibration.md](review-and-calibration.md): at most one true
+weak-model pass, then one or two true Frontier passes out of four. Inspect every
+trace. No prompt guarantees those counts. Missing infrastructure, unscored attempts
+and absent media are not legitimate task failures.
