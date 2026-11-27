@@ -117,7 +117,7 @@ record('end')
     def test_read_only_preflight_runs_while_a_writer_is_held(self):
         first = self.launch('first', HOLD='10')
         self.wait_for(lambda: bool(self.records()))
-        for name in ('doctor --output json', 'task status --output json'):
+        for name in ('doctor --output json',):
             reader = self.launch(name, SWEGEN_HELIX_ACTIVE='author')
             reader.communicate(timeout=2)
             self.assertEqual(reader.returncode, 0)
@@ -131,6 +131,22 @@ record('end')
         self.assertEqual(writer.returncode, 0)
         events = self.records()
         self.assertLess(events.index({'name':'first','event':'end'}), events.index({'name':'task oracle','event':'start'}))
+
+    def test_task_status_serializes_with_other_helix_state_writers(self):
+        first = self.launch('first', HOLD='0.5')
+        self.wait_for(lambda: bool(self.records()))
+        second = self.launch('task status --output json')
+        time.sleep(0.12)
+        self.assertFalse(any(x['name']=='task status --output json' for x in self.records()))
+        first.communicate(timeout=3)
+        second.communicate(timeout=3)
+        self.assertEqual(second.returncode, 0)
+        events = self.records()
+        self.assertLess(events.index({'name':'first','event':'end'}), events.index({'name':'task status --output json','event':'start'}))
+
+        nested = self.launch('task status --output json', SWEGEN_HELIX_ACTIVE='author')
+        self.assertIn('Close and save', nested.communicate(timeout=2)[1])
+        self.assertEqual(nested.returncode, 75)
 
     def test_unrecognized_diagnostic_options_still_queue(self):
         first = self.launch('first', HOLD='0.5')

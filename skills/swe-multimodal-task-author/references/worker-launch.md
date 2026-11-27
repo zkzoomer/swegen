@@ -7,8 +7,11 @@ Helix pairing or task-authoring agent. The final official oracle runs locally.
 
 ## Launch contract
 
-The operator supplies an existing task URL, assignment brief and limits through
-`--task-url` and `--brief-file`. The launcher checks local Helix/Codex authentication,
+The operator supplies an existing task URL and assigned GitHub PR through
+`--task-url` and `--pr`. The agent derives the base, behavior and reproduction from
+the PR, linked issue and downloaded task references. `--brief-file` optionally adds
+special instructions or limits; existing brief-only launches remain supported.
+The launcher checks local Helix/Codex authentication,
 Python, uv and Docker, downloads the task locally (or verifies --task-dir), and
 creates one private persistent compute worker. It installs the runtime kit and rv
 credential there. Multimodal probes in rv 0.0.152 require Codex regardless of judge mode,

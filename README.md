@@ -49,16 +49,21 @@ restricts other nonessential dependency/service domains; report real blockers.
 
 ## Launch
 
-Use an external assignment brief with the assigned PR/base/scope and concrete limits:
+Supply the existing Helix task URL and assigned GitHub PR. The agent derives the
+starting commit, intended behavior and reproduction from the PR and linked issue:
 
 ```bash
 npm run start -- \
   --task-url 'https://helix.micro1.ai/pipelines/PIPELINE_ID/tasks?task_id=TASK_ID' \
-  --brief-file /absolute/path/to/assignment.md
+  --pr 'https://github.com/OWNER/REPO/pull/NUMBER'
 ```
 
-`JOB.template.md` plus the URL and brief produces local `JOB.md`. Shared behavior
-comes from AGENTS.md and the [skill](skills/swe-multimodal-task-author/SKILL.md).
+Add `--brief-file /absolute/path/to/notes.md` only for special instructions or limits.
+Those notes supplement the assigned PR in the generated `JOB.md`. Existing
+brief-only commands are also supported. An explicitly supplied brief must be nonempty.
+
+`JOB.template.md` plus these inputs produces local `JOB.md`. Shared behavior and
+default limits come from AGENTS.md and the [skill](skills/swe-multimodal-task-author/SKILL.md).
 Download happens locally. To reuse an already downloaded folder, add
 `--task-dir /absolute/path/to/linked-task`; the launcher verifies its task identity.
 Independent launches share a local Helix queue, including Helix commands issued by
@@ -66,16 +71,17 @@ their agents. Downloads, recorded sessions, packaging and local oracles wait the
 turn instead of colliding on Helix's writer lock. Remote builds and QC can run in
 parallel. Close/save recorded sessions before long remote work to release the queue;
 requesting another Helix write operation while your own session is open fails promptly
-with an explanation. Verified read-only `helix doctor` and `helix task status`
-forms (with optional `--output json`), plus CLI help/version, remain available
-without taking this queue. Unknown options still queue. Native Helix locks are
+with an explanation. Verified read-only `helix doctor` forms (with optional
+`--output json`), plus CLI help/version, remain available without taking this queue.
+`helix task status` also queues because Helix 0.1.3 opens its local state writer.
+Unknown options still queue. Native Helix locks are
 unchanged. The queue uses a private
 file under `~/.cache/swegen/`, never Helix's database or native locks.
 The terminal bridge reports `phase` and `ready`; it sends no task message until the
 real Codex composer is connected. Cancelling a queued launch creates no trace and
 does not invalidate later saved author segments. A completed task still needs at
 least one actual authoring segment with a verified upload receipt.
-The generic command shape is unchanged. Existing compatible worker snapshots work:
+Existing compatible worker snapshots work:
 the required helper scripts upload at runtime, so this refactor needs no rebuild.
 
 Before creating a paid worker, normal task jobs prepare a shared local browser-only
@@ -177,7 +183,7 @@ The auth smoke makes one local configured-model call and creates no worker. A co
 provisioning/transfer smoke creates a billed worker but starts neither agent:
 
 ```bash
-npm run start -- --task-url '<helix-task-url>' --brief-file assignment.md --dry-run
+npm run start -- --task-url '<helix-task-url>' --pr 'https://github.com/OWNER/REPO/pull/NUMBER' --dry-run
 ```
 
 Offline tests exercise real PTYs with fixture processes, snapshot deltas, file safety,

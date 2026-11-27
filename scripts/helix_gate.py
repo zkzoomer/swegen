@@ -28,11 +28,11 @@ def operation(args):
 
 
 def read_only(args):
-    """Only verified diagnostic forms bypass our queue; native locks still apply."""
+    """Doctor can bypass the queue; task status opens Helix's state writer."""
     args = list(args)
     if args[-2:] == ['--output', 'json']:
         args = args[:-2]
-    return args in (['doctor'], ['task', 'status'])
+    return args == ['doctor']
 
 
 def main():

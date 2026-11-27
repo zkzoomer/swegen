@@ -28,9 +28,9 @@ before acting. Local Helix write operations share a cross-job queue: a waiting l
 not a failure. Close/save the session before long remote builds or QC so other jobs
 can author, then reopen it for repairs. Download references before opening it; other
 Helix write operations within the same active session fail promptly to avoid deadlock.
-Verified `helix doctor` and `helix task status` forms, with optional `--output json`,
-can run concurrently without taking the outer queue; native Helix locks remain intact.
-Unknown options still queue.
+Verified `helix doctor` forms, with optional `--output json`, can run concurrently
+without taking the outer queue. `helix task status` also queues because Helix 0.1.3
+opens its local state writer. Native Helix locks remain intact; unknown options still queue.
 For genuine menus, inner-key --key enter/up/down/escape/tab/y/n sends a bounded
 terminal key; read the prompt and act within the job authorization.
 If needed, inner-interrupt sends one Ctrl-C; it does not certify a saved trace.

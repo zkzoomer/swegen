@@ -189,7 +189,8 @@ async function main(): Promise<void> {
     if (!/(^|\n)OK(\n|$)/.test(response)) throw new Error('Local authentication smoke did not produce OK')
     return
   }
-  const job = renderJobText(await fs.readFile(path.join(PROJECT, 'JOB.template.md'), 'utf8'), options, await fs.readFile(options.briefFile, 'utf8'))
+  const brief = options.briefFile ? await fs.readFile(options.briefFile, 'utf8') : ''
+  const job = renderJobText(await fs.readFile(path.join(PROJECT, 'JOB.template.md'), 'utf8'), options, brief)
   await fs.writeFile(path.join(logs, 'JOB.md'), redactor.redact(job), {mode: 0o600})
   const runtime = await prepareRuntimeAssets(PROJECT, process.env.MEDIA_CAPTURE_KIT_DIR)
   if (!runtime) throw new Error('MEDIA_CAPTURE_KIT_DIR is required')

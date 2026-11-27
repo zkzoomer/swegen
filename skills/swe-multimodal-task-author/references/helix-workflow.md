@@ -4,8 +4,8 @@ Use for download, session control, uploads, artifact transfers, and recovery.
 
 ## Intake
 
-The job supplies a task brief and an existing Helix URL. Download that task rather
-than creating a different one:
+The job supplies an assigned PR (with optional extra instructions) or a task brief,
+and an existing Helix URL. Download that task rather than creating a different one:
 
 ```bash
 helix status

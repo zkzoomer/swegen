@@ -38,8 +38,8 @@ A newer notice requires a new acknowledgement. It does not edit task files or
 replace the recorded technical-authoring workflow.
 The outer owns operational recovery and scope review; follow references/recovery.md.
 Use qc-run/worker-wait/qc-collect for shared counters and receipts. Review real public
-composition and a finite behavior contract before probes. Local Helix write operations share
-a cross-job queue; verified doctor/task-status diagnostics can run concurrently.
+composition and a finite behavior contract before probes. Local Helix state operations share
+a cross-job queue, including task status; verified doctor diagnostics can run concurrently.
 Close/save the inner before long remote builds or QC, then reopen
 it for technical edits; inspect and handle authorized approval menus. Use bounded waits and batch
 artifact downloads rather than repeatedly polling through the model.

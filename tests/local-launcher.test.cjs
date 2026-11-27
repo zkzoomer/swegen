@@ -14,7 +14,7 @@ async function fixture(t,mutate=false,qc='passed',authFail=false,dryRun=false,br
  for(const name of ['README.md','build_media_task.py','capturekit/README.md','capturekit/capturekit.py','capturekit/ghost_path.js','scripts/audit_cmds.py']){const file=path.join(kit,name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'fixture kit playwright==1.48.0\n')}
  await fs.writeFile(path.join(project,'scripts/audit_handoff.py'),"print('{\"status\":\"ok\"}')\n")
  await fs.writeFile(path.join(task,'task.toml'),'fixture=true\n')
- await fs.writeFile(path.join(root,'assignment.md'),'Transport-only fixture assignment.')
+ if(settings.briefOnly||settings.extraBrief!==undefined)await fs.writeFile(path.join(root,'assignment.md'),settings.extraBrief??'Transport-only fixture assignment.')
  await fs.copyFile(path.join(__dirname,'fixtures/local-outer.cjs'),path.join(project,'agent/node_modules/.bin/tsx'));await fs.chmod(path.join(project,'agent/node_modules/.bin/tsx'),0o755)
  const fakeHelix=`#!/usr/bin/env python3
 import sys,os,json,pathlib,tty,zipfile,hashlib,time
@@ -73,7 +73,9 @@ else:print('fixture docker ready')
  await fs.mkdir(path.join(env.HOME,'.codex'),{recursive:true})
  await fs.writeFile(path.join(env.HOME,'.codex/auth.json'),JSON.stringify(settings.codexLogin===false?{}:{tokens:{access_token:'fixture-codex-login'}}))
  env.CODEX_HOME=path.join(env.HOME,'.codex')
- const args=[path.join(project,'dist/index.js'),'--task-url','https://helix.micro1.ai/pipelines/p/tasks?task_id=fixture-task','--brief-file',path.join(root,'assignment.md'),'--output-dir',path.join(root,'outputs')]
+ const args=[path.join(project,'dist/index.js'),'--task-url','https://helix.micro1.ai/pipelines/p/tasks?task_id=fixture-task','--output-dir',path.join(root,'outputs')]
+ if(!settings.briefOnly)args.push('--pr',settings.prUrl??'https://github.com/owner/repository/pull/123')
+ if(settings.briefOnly||settings.extraBrief!==undefined)args.push('--brief-file',path.join(root,'assignment.md'))
  if(dryRun)args.push('--dry-run')
  let result
  try{const r=await exec(process.execPath,args,{cwd:project,env,timeout:20000,maxBuffer:2*1024*1024});result={...r,code:0}}catch(e){result={stdout:e.stdout||'',stderr:e.stderr||'',code:e.code}}
@@ -100,6 +102,32 @@ test('whole local launcher records authoring, runs oracle locally, downloads log
  assert.ok(removed>events.findLastIndex(x=>x.kind==='download'))
  assert.equal(events.some(x=>x.kind==='stop'),false)
  assert.ok((await fs.readdir(path.join(root,'outputs'))).some(x=>x.includes('handoff')&&x.endsWith('.zip')))
+ await assert.rejects(fs.access(path.join(root,'assignment.md')),{code:'ENOENT'})
+ const run=path.join(root,'outputs/logs',(await fs.readdir(path.join(root,'outputs/logs')))[0])
+ assert.match(await fs.readFile(path.join(run,'JOB.md'),'utf8'),/Assigned PR: https:\/\/github.com\/owner\/repository\/pull\/123/)
+})
+test('PR launch preserves optional special instructions in the generated job',async t=>{
+ const notes='Keep the fix in the assigned package. Do not launch hosted evaluations.'
+ const {root,result}=await fixture(t,false,'passed',false,false,false,{extraBrief:notes})
+ assert.equal(result.code,0,result.stdout+'\n'+result.stderr)
+ const run=path.join(root,'outputs/logs',(await fs.readdir(path.join(root,'outputs/logs')))[0])
+ const job=await fs.readFile(path.join(run,'JOB.md'),'utf8')
+ assert.match(job,/Assigned PR: https:\/\/github.com\/owner\/repository\/pull\/123/)
+ assert.ok(job.includes('Additional instructions:\n\n'+notes))
+})
+test('legacy brief-only launch remains supported',async t=>{
+ const {root,result}=await fixture(t,false,'passed',false,false,false,{briefOnly:true})
+ assert.equal(result.code,0,result.stdout+'\n'+result.stderr)
+ const run=path.join(root,'outputs/logs',(await fs.readdir(path.join(root,'outputs/logs')))[0])
+ const job=await fs.readFile(path.join(run,'JOB.md'),'utf8')
+ assert.ok(job.includes('Transport-only fixture assignment.'))
+ assert.doesNotMatch(job,/Assigned PR:/)
+})
+test('invalid PR is rejected before local Helix operations or worker creation',async t=>{
+ const {result,events}=await fixture(t,false,'passed',false,false,false,{prUrl:'https://github.com/owner/repository/issues/123'})
+ assert.notEqual(result.code,0)
+ assert.match(result.stderr,/--pr must be an HTTPS GitHub pull request URL/)
+ assert.deepEqual(events,[])
 })
 test('post-oracle task change cannot produce a completed handoff or delete evidence',async t=>{
  const {root,result,events}=await fixture(t,true)
